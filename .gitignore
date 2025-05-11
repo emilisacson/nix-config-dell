@@ -1,0 +1,8 @@
+# Ignore flake.lock if you want it regenerated on each machine
+# Otherwise, track it for reproducible builds
+#flake.lock
+
+# Editor/OS junk
+*.swp
+*.bak
+.DS_Store

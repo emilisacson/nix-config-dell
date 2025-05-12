@@ -12,15 +12,11 @@
 
   nixpkgs.config.allowUnfreePredicate = _: true;
 
-  home.packages = with pkgs; [
-    git
-    vscode
-    brave
-  ];
-
   imports = [
     inputs.cosmic-manager.homeManagerModules.default
     ./applications/vscode.nix
+    ./applications/applications.nix
+    ./applications/steam.nix
     ./desktop/cosmic.nix  # Import the COSMIC settings from the dedicated file
   ];
 }

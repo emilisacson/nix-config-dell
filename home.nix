@@ -4,11 +4,18 @@
   home.username = "emil";
   home.homeDirectory = "/home/emil";
 
-  home.stateVersion = "24.11"; # or current NixOS version, just pick a recent one
+  home.stateVersion = "24.11";
 
   programs.home-manager.enable = true;
 
+  xdg.enable = true;
+
   home.packages = with pkgs; [
     git
+    vscodium
+  ];
+
+  imports = [
+    ./applications/vscode.nix
   ];
 }

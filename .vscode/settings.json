@@ -1,0 +1,8 @@
+{
+    "github.copilot.chat.reviewSelection.instructions": [
+        {
+            "text": "I use Fedora 42 WE with Cosmic DE and use Nix Flakes and Home Manager to manage my system.",
+            "type": "nix"
+        }
+    ]
+}

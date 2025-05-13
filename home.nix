@@ -17,6 +17,7 @@
     ./applications/vscode.nix
     ./applications/applications.nix
     ./applications/steam.nix
-    ./desktop/cosmic.nix  # Import the COSMIC settings from the dedicated file
+    ./applications/citrix.nix
+    ./desktop/cosmic.nix
   ];
 }

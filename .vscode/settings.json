@@ -1,6 +1,8 @@
 {
     "editor.formatOnSave": true,
-    "github.copilot.enable": true,
+    "github.copilot.enable": {
+        "*": true
+    },
     "nix.enableLanguageServer": true,
     "git.autofetch": true,
     "github.copilot.chat.reviewSelection.instructions": [

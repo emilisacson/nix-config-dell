@@ -1,6 +1,13 @@
 { pkgs, ... }:
 
 {
+  # Import specific application modules
+  imports = [
+    ./citrix.nix
+    ./vscode.nix
+    ./steam.nix
+  ];
+
   # Install applications
   home.packages = with pkgs; [
     # Password manager

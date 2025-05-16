@@ -14,10 +14,7 @@
 
   imports = [
     inputs.cosmic-manager.homeManagerModules.default
-    ./applications/vscode.nix
     ./applications/applications.nix
-    ./applications/steam.nix
-    ./applications/citrix.nix
     ./desktop/cosmic.nix
   ];
 }

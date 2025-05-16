@@ -13,6 +13,27 @@ CACHE_DIR="${HOME}/.cache"
 OUTPUT_FILE="${CACHE_DIR}/citrix-workspace-latest.json"
 TEMP_DIR="${CACHE_DIR}/citrix-temp"
 
+# Parse command line arguments
+NO_REBUILD=false
+JUST_HASH=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --no-rebuild)
+      NO_REBUILD=true
+      shift
+      ;;
+    --just-hash)
+      JUST_HASH=true
+      shift
+      ;;
+    *)
+      # Pass through other arguments to the downloader
+      EXTRA_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
 # Make sure we have required directories
 mkdir -p "${DOWNLOAD_DIR}"
 mkdir -p "${CACHE_DIR}"
@@ -98,7 +119,7 @@ run_automated_downloader() {
   
   # Run the script in the Nix shell
   cd "${TEMP_DIR}"
-  nix-shell "${SCRIPT_DIR}/citrix-shell.nix" --run "node auto-download-citrix.js --download-dir=\"${DOWNLOAD_DIR}\" ${BROWSER_ARGS} $@"
+  nix-shell "${SCRIPT_DIR}/citrix-shell.nix" --run "node auto-download-citrix.js --download-dir=\"${DOWNLOAD_DIR}\" ${BROWSER_ARGS} ${EXTRA_ARGS[*]}"
   
   # Check if the download was successful
   if [[ $? -ne 0 ]]; then
@@ -261,7 +282,15 @@ update_nix_config() {
   echo "Updating Nix configuration for Citrix Workspace..."
   
   # Save the version and hash information to a JSON file
-  echo "{\"version\": \"$VERSION\", \"sha256\": \"$HASH\", \"filename\": \"$FILENAME\"}" > "$OUTPUT_FILE"
+  echo "{\"version\": \"$VERSION\", \"sha256\": \"$HASH\", \"filename\": \"$FILENAME\", \"path\": \"$RPM_FILE\"}" > "$OUTPUT_FILE"
+  
+  # Update the config file only if we're not in just-hash mode
+  if [[ "$JUST_HASH" == "true" ]]; then
+    # Update only the hash in the existing file by using sed
+    sed -i "s|hash = \"sha256-[A-Za-z0-9+=]*\"|hash = \"sha256-$HASH\"|" "$CONFIG_FILE"
+    echo "Updated hash in existing configuration."
+    return
+  fi
   
   # Create a new version of citrix.nix
   cat > "$CONFIG_FILE" << EOF
@@ -270,7 +299,6 @@ update_nix_config() {
 let
   # Define the version and package info
   citrixVersion = "$VERSION";
-  citrixHash = "sha256-$HASH";
   citrixFilename = "$FILENAME";
   
   # Create a Citrix package from the official RPM
@@ -281,7 +309,7 @@ let
     src = pkgs.fetchurl {
       name = citrixFilename;
       url = "file://\${config.home.homeDirectory}/Downloads/\${citrixFilename}";
-      hash = citrixHash;
+      hash = "sha256-$HASH";
     };
     
     # Tools needed to extract and process the RPM
@@ -328,6 +356,9 @@ let
       
       # Now we're in the directory with the extracted content
       cd ..
+      
+      # Debug info - see what files were extracted
+      find extracted -type f -name "selfservice" | sort
     '';
     
     installPhase = ''
@@ -357,26 +388,38 @@ MimeType=application/x-ica;
 INNEREOF
       
       # Create wrapper script
-      makeWrapper \$out/opt/Citrix/ICAClient/selfservice \$out/bin/citrix-workspace \\
-        --prefix PATH : "\${lib.makeBinPath [ pkgs.xdg-utils ]}" \\
-        --set ICAROOT "\$out/opt/Citrix/ICAClient" \\
-        --set GTK_PATH "\${pkgs.gtk3}/lib/gtk-3.0" \\
-        --set SSL_CERT_FILE "\${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt" \\
-        --set GIO_MODULE_DIR "\${pkgs.glib-networking}/lib/gio/modules" \\
-        --set LIBCITRIX_DISABLE_CTX_MITM_CHECK "1" \\
-        --set LIBCITRIX_CTX_SSL_FORCE_ACCEPT "1" \\
-        --set LIBCITRIX_CTX_SSL_VERIFY_MODE "0" \\
-        --set ICA_SSL_VERIFY_MODE "0" \\
-        --prefix LD_LIBRARY_PATH : "\${pkgs.lib.makeLibraryPath [
-          pkgs.webkitgtk_4_1
-          pkgs.gtk3
-          pkgs.glib
-          pkgs.nss
-          pkgs.openssl
-          pkgs.libidn
-          pkgs.gst_all_1.gstreamer
-          pkgs.gst_all_1.gst-plugins-base
-        ]}"
+      cat > \$out/bin/citrix-workspace << INNEREOF
+#!/bin/sh
+export ICAROOT=\$out/opt/Citrix/ICAClient
+export GTK_PATH=\${pkgs.gtk3}/lib/gtk-3.0
+export SSL_CERT_FILE=\${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+export GIO_MODULE_DIR=\${pkgs.glib-networking}/lib/gio/modules
+
+# SSL settings
+export LIBCITRIX_DISABLE_CTX_MITM_CHECK=1
+export LIBCITRIX_CTX_SSL_FORCE_ACCEPT=1
+export LIBCITRIX_CTX_SSL_VERIFY_MODE=0
+export ICA_SSL_VERIFY_MODE=0
+
+# Set up library paths
+export LD_LIBRARY_PATH=\${pkgs.lib.makeLibraryPath [
+  pkgs.webkitgtk_4_1
+  pkgs.gtk3
+  pkgs.glib
+  pkgs.nss
+  pkgs.openssl
+  pkgs.libidn
+  pkgs.gst_all_1.gstreamer
+  pkgs.gst_all_1.gst-plugins-base
+]}:\$ICAROOT
+
+# Accept EULA automatically
+mkdir -p \\\$HOME/.ICAClient
+echo "1" > \\\$HOME/.ICAClient/.eula_accepted 2>/dev/null
+
+exec \$out/opt/Citrix/ICAClient/selfservice "\\\$@"
+INNEREOF
+      chmod +x \$out/bin/citrix-workspace
       
       # Create symlinks for main executables
       ln -sf \$out/opt/Citrix/ICAClient/wfica \$out/bin/wfica
@@ -411,7 +454,6 @@ INNEREOF
     '';
     
     # Let autoPatchelfHook do its job
-    dontStrip = true;
     dontPatchELF = false;
   };
 
@@ -469,6 +511,22 @@ cleanup_temp_files() {
 
 # Main program flow
 main() {
+  # If we're in JUST_HASH mode, quickly find the RPM, calculate hash and update config
+  if [[ "$JUST_HASH" == "true" ]]; then
+    RPM_PATH=$(find_rpm_file)
+    if [ -z "$RPM_PATH" ]; then
+      echo "Error: No Citrix RPM found for hash calculation."
+      exit 1
+    fi
+    HASH=$(add_to_nix_store "$RPM_PATH")
+    if [ -z "$HASH" ]; then
+      exit 1
+    fi
+    VERSION=$(extract_version "$RPM_PATH")
+    update_nix_config "$VERSION" "$HASH" "$RPM_PATH"
+    exit 0
+  fi
+
   # Setup temporary environment with dependencies
   setup_temp_environment
   
@@ -480,7 +538,7 @@ main() {
     echo "No existing Citrix RPM found. Attempting automated download..."
     
     # Try automated download
-    if run_automated_downloader "$@"; then
+    if run_automated_downloader "${EXTRA_ARGS[@]}"; then
       # Check if the download was successful
       RPM_PATH=$(find_rpm_file)
       if [ -z "$RPM_PATH" ]; then
@@ -513,20 +571,26 @@ main() {
   # Update the Nix configuration
   update_nix_config "$VERSION" "$HASH" "$RPM_PATH"
   
-  # Offer to rebuild the home configuration
-  echo ""
-  echo "========================================================================"
-  echo "Ready to rebuild your Nix configuration with Citrix Workspace $VERSION"
-  echo "========================================================================"
-  echo ""
-  read -p "Would you like to rebuild now? (y/n): " REBUILD_NOW
-  
-  if [[ "$REBUILD_NOW" =~ ^[Yy]$ ]]; then
-    rebuild_home_configuration
+  # Offer to rebuild the home configuration unless --no-rebuild was specified
+  if [[ "$NO_REBUILD" != "true" ]]; then
+    echo ""
+    echo "========================================================================"
+    echo "Ready to rebuild your Nix configuration with Citrix Workspace $VERSION"
+    echo "========================================================================"
+    echo ""
+    read -p "Would you like to rebuild now? (y/n): " REBUILD_NOW
+    
+    if [[ "$REBUILD_NOW" =~ ^[Yy]$ ]]; then
+      rebuild_home_configuration
+    else
+      echo ""
+      echo "To complete the installation, run:"
+      echo "nix run --impure .#homeConfigurations.\$USER.activationPackage"
+    fi
   else
     echo ""
-    echo "To complete the installation, run:"
-    echo "nix run --impure .#homeConfigurations.\$USER.activationPackage"
+    echo "Downloaded Citrix Workspace $VERSION and prepared configuration."
+    echo "Not rebuilding due to --no-rebuild flag."
   fi
   
   # Clean up temporary files
@@ -534,4 +598,4 @@ main() {
 }
 
 # Run the main program with all provided arguments
-main "$@"
+main

@@ -42,6 +42,61 @@ function fileExists(filePath) {
     }
 }
 
+// Function to check for existing Citrix RPM files in the download directory
+function checkForExistingRpm(downloadDir) {
+    try {
+        if (!fs.existsSync(downloadDir)) {
+            console.log(`Download directory ${downloadDir} doesn't exist. Creating it...`);
+            fs.mkdirSync(downloadDir, { recursive: true });
+            return null;
+        }
+
+        const files = fs.readdirSync(downloadDir);
+
+        // First, check for Citrix ICAClient RPM files
+        const citrixRpmFiles = files.filter(file =>
+            file.endsWith('.rpm') && (
+                file.toLowerCase().includes('citrix') ||
+                file.toLowerCase().includes('ica') ||
+                file.toLowerCase().includes('workspace')
+            )
+        );
+
+        if (citrixRpmFiles.length > 0) {
+            // Sort by modification time to get the newest file
+            const fullPaths = citrixRpmFiles.map(file => ({
+                filename: file,
+                path: path.join(downloadDir, file),
+                mtime: fs.statSync(path.join(downloadDir, file)).mtime.getTime()
+            }));
+
+            fullPaths.sort((a, b) => b.mtime - a.mtime);
+            const newestRpm = fullPaths[0];
+
+            console.log(`Found existing Citrix RPM: ${newestRpm.filename} (${formatBytes(fs.statSync(newestRpm.path).size)})`);
+            return newestRpm.path;
+        }
+
+        return null;
+    } catch (error) {
+        console.error(`Error checking for existing RPM files: ${error.message}`);
+        return null;
+    }
+}
+
+// Format bytes to a human-readable format
+function formatBytes(bytes, decimals = 2) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
 // Function to find browser executable
 async function findBrowser() {
     // If user specified a browser, prioritize that choice
@@ -155,8 +210,14 @@ function monitorDownloads(downloadDir, initialFiles = []) {
         let downloadReported = false; // Track if we've already reported download completion
         let downloadStartReportedByMonitor = false;
         let completedFilesFound = false; // New flag to track if we've found completed files
-        let pendingCompletionDisplay = false; // Flag to indicate we're waiting to show 100% before completion
-        let pendingCompletionFiles = []; // Store completed files while waiting to show 100%
+        let rpmCompletionDetected = false; // Track if an RPM file completion was detected
+        let stableFileSize = 0; // Size of the file when it last changed
+        let stableSizeTime = 0; // Time when the file size last changed
+        let stableCountThreshold = 6; // Number of checks with stable size before completion (3s at 500ms interval)
+
+        // For detecting completed downloads where browsers don't rename files
+        let downloadingFileSize = 0;
+        let downloadingFileStableCount = 0;
 
         const reportedFiles = new Set();
 
@@ -219,13 +280,16 @@ function monitorDownloads(downloadDir, initialFiles = []) {
                 console.log(`✓ DOWNLOAD COMPLETED SUCCESSFULLY ✓`);
                 console.log(`Files:`);
                 fileDetails.forEach(file => {
-                    console.log(`  • ${file.name} (${Math.round(file.size / 1024)} KB)`);
+                    console.log(`  • ${file.name} (${formatBytes(file.size)})`);
                 });
                 console.log(`\nDownload location: ${downloadDir}`);
                 console.log('============================================');
                 downloadReported = true;
                 clearInterval(checkInterval);
                 resolve({ completed: true, files: fileDetails, inProgress: false });
+
+                // EXIT AFTER SUCCESSFUL DOWNLOAD
+                process.exit(0);
             }, 500); // Small delay to ensure user sees 100%
         };
 
@@ -235,7 +299,7 @@ function monitorDownloads(downloadDir, initialFiles = []) {
                 const currentFiles = fs.readdirSync(downloadDir);
                 const newFiles = currentFiles.filter(file => !initialFileSet.has(file));
 
-                // Check for completed RPM files
+                // First check for completed RPM files
                 const completedFiles = newFiles.filter(file =>
                     file.toLowerCase().endsWith('.rpm') && (
                         file.toLowerCase().includes('citrix') ||
@@ -249,6 +313,7 @@ function monitorDownloads(downloadDir, initialFiles = []) {
                 if (completedFiles.length > 0 && !downloadReported) {
                     // Mark that we've found completed files
                     completedFilesFound = true;
+                    rpmCompletionDetected = true;
 
                     const fileDetails = completedFiles
                         .filter(file => !reportedFiles.has(file))
@@ -264,27 +329,8 @@ function monitorDownloads(downloadDir, initialFiles = []) {
                         });
 
                     if (fileDetails.length > 0) {
-                        // Store file details for later use
-                        pendingCompletionFiles = fileDetails;
-
-                        // If we're still showing a download in progress or haven't shown 100% yet
-                        if (progressLine && !pendingCompletionDisplay) {
-                            // Set the flag to display completion after showing 100%
-                            pendingCompletionDisplay = true;
-
-                            // Update total size if we have a better estimate now
-                            if (fileDetails[0].size > totalSize) {
-                                totalSize = fileDetails[0].size;
-                            }
-
-                            // Show 100% and then the completion message
-                            displayCompletionMessage(fileDetails);
-                            return;
-                        } else if (!progressLine) {
-                            // If no progress bar is active, show completion directly
-                            displayCompletionMessage(fileDetails);
-                            return;
-                        }
+                        displayCompletionMessage(fileDetails);
+                        return;
                     }
                 }
 
@@ -296,15 +342,10 @@ function monitorDownloads(downloadDir, initialFiles = []) {
                     file.endsWith('.incomplete')
                 );
 
-                // If we have pending completion but no more partial files, show 100% and complete
-                if (pendingCompletionDisplay && partialFiles.length === 0 && pendingCompletionFiles.length > 0) {
-                    displayCompletionMessage(pendingCompletionFiles);
-                    return;
-                }
-
                 if (partialFiles.length > 0) {
                     const partialFile = partialFiles[0];
                     const filePath = path.join(downloadDir, partialFile);
+
                     try {
                         const stats = fs.statSync(filePath);
                         const currentSize = stats.size;
@@ -319,83 +360,145 @@ function monitorDownloads(downloadDir, initialFiles = []) {
                                 downloadStartReportedByMonitor = true;
                             }
                             if (partialFile.includes('ICAClient') && (partialFile.includes('rhel') || partialFile.includes('x86_64'))) {
-                                totalSize = 450 * 1024 * 1024;
+                                totalSize = 450 * 1024 * 1024; // Approx 450MB for Citrix ICAClient
                             }
                             lastFileName = partialFile;
                             lastFileSize = currentSize;
                             lastSizeCheckTime = currentTime;
                             noProgressCount = 0;
-                            // Initial draw of progress bar when download starts
                             drawProgressBar(currentSize, totalSize);
                         }
 
-                        // This check is slightly redundant due to setInterval, but harmless.
-                        // More importantly, it groups progress update logic.
-                        if (currentTime - lastSizeCheckTime >= 450) { // Check slightly less than interval to ensure it fires
+                        if (currentTime - lastSizeCheckTime >= 450) {
                             if (currentSize > lastFileSize) {
                                 drawProgressBar(currentSize, totalSize);
                                 lastFileSize = currentSize;
+                                stableFileSize = currentSize;
+                                stableSizeTime = currentTime;
                                 noProgressCount = 0;
-
-                                // If download is very close to completion and we found completed files,
-                                // prepare to show the completion message
-                                if (completedFilesFound && totalSize > 0 && currentSize >= totalSize * 0.98) {
-                                    pendingCompletionDisplay = true;
-                                }
-                            } else if (currentSize === lastFileSize && currentSize > 0) { // Still in progress, but no size change
+                                downloadingFileStableCount = 0;
+                            } else if (currentSize === lastFileSize && currentSize > 0) {
+                                // No change in file size - might be complete or stalled
                                 noProgressCount++;
-                                if (noProgressCount % 20 === 0) { // Log no progress every 10 seconds
+                                downloadingFileStableCount++;
+
+                                // If size has been stable for a while, it might be complete
+                                if (downloadingFileStableCount >= stableCountThreshold) {
+                                    // Check if the file is likely complete (close to expected size)
+                                    if (totalSize > 0 && currentSize >= totalSize * 0.98) {
+                                        console.log(`\nDownload likely complete. File size stable at ${formatBytes(currentSize)}`);
+
+                                        // Get the file extension without the .part/.crdownload
+                                        const baseFileName = partialFile.replace(/\.(crdownload|part|download|incomplete)$/, '');
+                                        const estimatedFinalPath = path.join(downloadDir, baseFileName);
+
+                                        // Create a fileDetails object for the stable file
+                                        const fileDetails = [{
+                                            name: baseFileName,
+                                            path: estimatedFinalPath,
+                                            size: currentSize
+                                        }];
+
+                                        displayCompletionMessage(fileDetails);
+                                        return;
+                                    }
+                                }
+
+                                if (noProgressCount % 20 === 0) {
                                     if (progressLine) {
                                         console.log();
                                         progressLine = '';
                                     }
-                                    console.log(`[DOWNLOAD] No progress detected for ${noProgressCount / 2} seconds on ${partialFile} (size: ${currentSize} bytes)`);
-                                    // Redraw progress bar after the "no progress" message
+                                    console.log(`[DOWNLOAD] No progress detected for ${noProgressCount / 2} seconds on ${partialFile} (size: ${formatBytes(currentSize)})`);
                                     drawProgressBar(currentSize, totalSize);
                                 }
                             }
-                            lastSizeCheckTime = currentTime; // Always update last check time
+                            lastSizeCheckTime = currentTime;
                         }
 
-                        if (noProgressCount >= 240) { // 2 minutes of no progress
+                        if (noProgressCount >= 240) {
                             if (progressLine) {
                                 console.log();
                                 progressLine = '';
                             }
                             console.log('[DOWNLOAD] No progress for 2 minutes, aborting');
                             clearInterval(checkInterval);
-                            resolve({ completed: false, inProgress: false, message: 'Download stalled - no progress for 2 minutes' });
+                            process.exit(1);
                             return;
                         }
 
-                        // If the partial file is very close to completion and we have detected completed files
-                        if (completedFilesFound && totalSize > 0 && currentSize >= totalSize * 0.99) {
-                            // Mark that we need to show 100% before completion
-                            pendingCompletionDisplay = true;
-                        }
-
-                        return { completed: false, inProgress: true, partialFile: partialFile, fileSize: currentSize };
+                        return;
                     } catch (e) {
                         if (args.debug) console.log(`Error checking partial file: ${e.message}`);
                     }
-                }
+                } else {
+                    // No partial files - check for active downloads without .part/.crdownload extension
+                    // Some browsers download directly to the final filename then move it
+                    const potentialDownloads = newFiles.filter(file =>
+                        !file.endsWith('.crdownload') &&
+                        !file.endsWith('.part') &&
+                        !file.endsWith('.download') &&
+                        !file.endsWith('.incomplete') &&
+                        !file.toLowerCase().endsWith('.rpm') // Exclude completed RPMs we've already checked
+                    );
 
-                // If we found completed files but there are no more partial files, show completion
-                if (completedFilesFound && pendingCompletionFiles.length > 0 && !downloadReported) {
-                    displayCompletionMessage(pendingCompletionFiles);
-                }
+                    for (const file of potentialDownloads) {
+                        const filePath = path.join(downloadDir, file);
+                        try {
+                            const stats = fs.statSync(filePath);
+                            const currentSize = stats.size;
 
-                return null;
+                            // If this is a new file or it's growing
+                            if (lastFileName !== file || currentSize > downloadingFileSize) {
+                                downloadingFileSize = currentSize;
+                                downloadingFileStableCount = 0;
+                                lastFileName = file;
+
+                                if (!downloadStartReportedByMonitor) {
+                                    console.log(`Download detected: ${file}`);
+                                    downloadStartReportedByMonitor = true;
+                                }
+
+                                drawProgressBar(currentSize, totalSize);
+                            } else if (currentSize === downloadingFileSize) {
+                                // File size is stable - might be complete
+                                downloadingFileStableCount++;
+
+                                if (downloadingFileStableCount >= stableCountThreshold && !rpmCompletionDetected) {
+                                    // Check file extension - if it's one we expect for Citrix
+                                    if (file.endsWith('.exe') || file.endsWith('.dmg') || file.endsWith('.zip') ||
+                                        file.endsWith('.tar.gz') || file.endsWith('.deb')) {
+
+                                        console.log(`\nDownload complete: ${file} (${formatBytes(currentSize)})`);
+                                        const fileDetails = [{
+                                            name: file,
+                                            path: filePath,
+                                            size: currentSize
+                                        }];
+
+                                        displayCompletionMessage(fileDetails);
+                                        return;
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore errors checking file - might have been moved/deleted
+                        }
+                    }
+                }
             } catch (error) {
                 console.error(`Error monitoring downloads: ${error.message}`);
                 return null;
             }
         };
 
+        // Initial check for existing completed files
         const initialCheckResult = checkForNewFiles();
         if (initialCheckResult && initialCheckResult.completed) {
             return;
         }
+
+        // Start monitoring for download progress and completion
         checkInterval = setInterval(checkForNewFiles, 500);
     });
 }
@@ -575,13 +678,30 @@ async function downloadCitrix() {
     console.log('=====================================');
     const absoluteDownloadPath = path.resolve(args['download-dir']);
     console.log(`Download directory: ${absoluteDownloadPath}`);
+
+    // Check for existing RPM files
+    const existingRpmFile = checkForExistingRpm(absoluteDownloadPath);
+    if (existingRpmFile) {
+        console.log('');
+        console.log('============================================');
+        console.log('✓ EXISTING CITRIX RPM FILE FOUND ✓');
+        console.log(`File: ${path.basename(existingRpmFile)}`);
+        console.log(`Size: ${formatBytes(fs.statSync(existingRpmFile).size)}`);
+        console.log(`Path: ${existingRpmFile}`);
+        console.log('============================================');
+        console.log('');
+        console.log('No download needed. Exiting...');
+        process.exit(0);
+    }
+
+    console.log('No existing Citrix RPM found. Will attempt download...');
     console.log(`Debug mode: ${args.debug ? 'enabled' : 'disabled'}`);
     console.log(`Headless mode: ${args.headless ? 'enabled' : 'disabled'}`);
 
-    if (!fs.existsSync(args['download-dir'])) {
-        fs.mkdirSync(args['download-dir'], { recursive: true });
-    }
-    const initialFiles = fs.readdirSync(args['download-dir']);
+    // Get list of files in download directory before we start
+    const initialFiles = fs.readdirSync(absoluteDownloadPath);
+
+    // Launch browser and continue with download
     const browserInfo = await findBrowser();
     console.log(`Using browser: ${browserInfo.type} at ${browserInfo.path}`);
 
@@ -737,78 +857,32 @@ async function downloadCitrix() {
                 });
             }
 
-            // MODIFICATION: Removed the "--- Awaiting download monitor completion ---" log line.
-            // console.log('\n--- Awaiting download monitor completion ---'); 
+            // Wait for the download monitor to complete
             downloadResultGlobal = await downloadMonitorPromise;
 
+            // At this point, the process should have been terminated by the monitor
+            // in the displayCompletionMessage function, but just in case:
             if (downloadResultGlobal.completed && downloadResultGlobal.files && downloadResultGlobal.files.length > 0) {
-                downloadDetectedByMainLogic = true; // Ensure this is set if monitor completes successfully
-                console.log("Download process finished. Monitor reported completion.");
-            } else if (downloadResultGlobal.inProgress) {
-                console.log('\n============================================');
-                console.log('⟳ DOWNLOAD STILL IN PROGRESS (UNEXPECTED MONITOR RESOLVE) ⟳');
-                if (downloadResultGlobal.partialFile) console.log(`  • Partial file: ${downloadResultGlobal.partialFile}`);
-                console.log('  • Please check download status manually.');
-                console.log('============================================\n');
-                downloadDetectedByMainLogic = true;
-            } else if (downloadResultGlobal.message && downloadResultGlobal.message.includes('stalled')) {
-                console.log('\n============================================');
-                console.log('✗ DOWNLOAD STALLED ✗');
-                console.log(`  • Reason: ${downloadResultGlobal.message}`);
-                console.log(`  • Download location: ${absoluteDownloadPath}`);
-                console.log('============================================\n');
-            } else if (!downloadDetectedByMainLogic && !await checkDownloadStatus()) {
-                console.log('\n============================================');
-                console.log('✗ NO DOWNLOAD DETECTED OR COMPLETED ✗');
-                console.log('  • All attempts failed or monitor timed out without success.');
-                console.log(`  • Download location: ${absoluteDownloadPath}`);
-                console.log('  • Try --debug flag or check Citrix website for changes.');
-                console.log('============================================\n');
-            } else if (!downloadResultGlobal.completed) {
-                console.log("\nDownload monitor finished, but full completion wasn't confirmed by it.");
-                console.log("Please check the download directory:", absoluteDownloadPath);
-            }
-
-            const shouldKeepAlive = downloadDetectedByMainLogic || (downloadResultGlobal && downloadResultGlobal.completed && downloadResultGlobal.files && downloadResultGlobal.files.length > 0);
-            if (shouldKeepAlive) {
-                if (!(downloadResultGlobal && downloadResultGlobal.message && downloadResultGlobal.message.includes('stalled')) && !(downloadResultGlobal && downloadResultGlobal.completed)) {
-                    console.log('\nDownload may still be in progress or completed outside of active monitoring.');
-                    console.log('Script will remain active. Press Ctrl+C to exit when download is finished.');
-                } else if (downloadResultGlobal && downloadResultGlobal.completed) {
-                    console.log('\nScript will remain active. Press Ctrl+C to exit.');
-                }
-                if (!args.headless) console.log("Browser will remain open. Close it manually if needed, or it will close on Ctrl+C.");
-                await new Promise(() => { /* Keep alive */ });
+                console.log("Download completed successfully.");
+                process.exit(0);
             } else {
-                console.log('Exiting script as no definitive download was detected or completed.');
+                console.log("Download did not complete successfully.");
+                process.exit(1);
             }
 
         } catch (e) {
             console.error(`Error during automation: ${e.message}`);
             if (args.debug) console.error(e.stack);
+            process.exit(1);
         } finally {
-            // Use downloadResultGlobal here
-            const finalDownloadDetected = downloadDetectedByMainLogic || (downloadResultGlobal && downloadResultGlobal.completed);
             if (puppeteerBrowser && puppeteerBrowser.isConnected()) {
-                if (!args.debug && !finalDownloadDetected) {
-                    console.log("Closing browser as no download was definitively started/completed and not in debug mode...");
-                    await puppeteerBrowser.close();
-                } else if (args.debug) {
-                    console.log("Debug mode: Browser will not be closed automatically by this script section.");
-                } else if (finalDownloadDetected && !args.headless) {
-                    console.log("Browser might remain open due to active/completed download (non-headless). Close manually or via Ctrl+C.");
-                } else if (finalDownloadDetected && args.headless) {
-                    // In headless mode with a detected download, if we are not keeping script alive indefinitely,
-                    // we might close. But the new Promise() above keeps it alive.
-                    // If script is meant to exit, then: await puppeteerBrowser.close();
-                }
+                await puppeteerBrowser.close().catch(() => { });
             }
         }
     } catch (e) {
         console.error(`Failed to launch browser: ${e.message}`);
         if (args.debug) console.error(e.stack);
-    } finally {
-        console.log("Script execution finished or terminated by user.");
+        process.exit(1);
     }
 }
 

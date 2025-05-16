@@ -1,0 +1,1 @@
+# mv ~/.config/mimeapps.list ~/.config/mimeapps.list.backup

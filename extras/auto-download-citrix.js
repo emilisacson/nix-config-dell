@@ -29,6 +29,7 @@ const args = minimist(process.argv.slice(2), {
         'version': null,
         'timeout': 120, // 2 minutes default timeout
         'url': 'https://www.citrix.com/downloads/workspace-app/linux/workspace-app-for-linux-latest.html' // Default URL
+        // https://www.citrix.com/downloads/workspace-app/legacy-workspace-app-for-linux/workspace-app-for-linux-latest13.htmls
     },
     boolean: ['debug', 'headless']
 });

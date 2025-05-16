@@ -1,257 +1,108 @@
 { pkgs, config, lib, ... }:
 
 let
-  # Define the version and package info
-  citrixVersion = "25.03.0.66";
-  citrixFilename = "ICAClient-rhel-25.03.0.66-0.x86_64.rpm";
+  # Define a custom citrix package by overriding the existing one in nixpkgs
+  customCitrix = pkgs.citrix_workspace.overrideAttrs (attrs: {
+    version = "24.11.0.85";
+    # The src is already defined in citrix_workspace, we don't need to override it
+    # unless you want to use a different version than what's included in nixpkgs
+  });
   
-  # Create a Citrix package from the official RPM
-  citrixWorkspace = pkgs.stdenv.mkDerivation {
-    name = "citrix-workspace-${citrixVersion}";
-    
-    # Use the RPM that we've already prefetched
-    src = pkgs.fetchurl {
-      name = citrixFilename;
-      url = "file://${config.home.homeDirectory}/Downloads/${citrixFilename}";
-      hash = "sha256-vxWIrVB05weggQQst5rTY8GF7aMXdZ2kcHq7cZ9CnGE=";
-    };
-    
-    # Tools needed to extract and process the RPM
-    nativeBuildInputs = with pkgs; [ 
-      rpm
-      makeWrapper
-      cpio
-      patchelf
+  # Create wrapper scripts for Citrix commands with proper bin directory
+  citrixWrapperScripts = pkgs.symlinkJoin {
+    name = "citrix-workspace-wrappers";
+    paths = [
+      (pkgs.writeShellScriptBin "citrix-workspace" ''
+        exec selfservice "$@"
+      '')
+      (pkgs.writeShellScriptBin "citrix-ica" ''
+        exec wfica "$@"
+      '')
+      (pkgs.writeShellScriptBin "citrix-workspace-debug" ''
+        CITRIX_DEBUG=1 exec selfservice "$@"
+      '')
     ];
-    
-    # Runtime dependencies
-    buildInputs = with pkgs; [
-      gtk3
-      glib
-      gdk-pixbuf
-      webkitgtk
-      webkitgtk_4_1
-      nss
-      nspr
-      xorg.libxkbfile
-      libsecret
-      libidn
-      openssl
-      xorg.libXmu
-      xorg.libXtst
-      xorg.libXaw
-      xorg.libXinerama
-      xorg.libX11
-      xorg.libXext
-      xorg.libXrender
-      xorg.libXfixes
-      gst_all_1.gstreamer
-      gst_all_1.gst-plugins-base
-      alsa-lib
-      pcsclite
-      libopus
-      opencv
-    ];
-    
-    # Allow impure paths for the RPM and skip standard phases
-    dontUnpack = true;
-    dontConfigure = true;
-    dontBuild = true;
-    dontStrip = true;
-    
-    # Important: disable autoPatchelf completely to avoid issues
-    dontAutoPatchelf = true;
-    
-    # Combine unpacking and installation into a single phase
-    installPhase = ''
-      # Create target directory structure
-      mkdir -p $out/opt/Citrix/ICAClient
-      mkdir -p $out/bin
-      mkdir -p $out/share/applications
-      
-      # Create a temporary directory for extraction
-      EXTRACT_DIR=$(mktemp -d)
-      
-      echo "Extracting RPM to $EXTRACT_DIR"
-      cd $EXTRACT_DIR
-      
-      # Extract .rpm content (creates cpio archive)
-      rpm2cpio $src > citrix.cpio
-      
-      # Extract the cpio archive
-      mkdir -p extracted
-      cd extracted
-      cpio -idm < ../citrix.cpio
-      
-      echo "RPM extracted, checking directory structure:"
-      find . -maxdepth 3 -type d
-      
-      # Check for ICAClient in standard location
-      if [ -d "./opt/Citrix/ICAClient" ]; then
-        echo "Found ICAClient in standard location"
-        cp -r ./opt/Citrix/ICAClient/* $out/opt/Citrix/ICAClient/
-      elif [ -d "./usr/share/Citrix" ]; then
-        echo "Found Citrix in usr/share"
-        cp -r ./usr/share/Citrix/* $out/opt/Citrix/ICAClient/
-      else
-        # Search for ICAClient directory anywhere in the extracted files
-        echo "Searching for ICAClient directory..."
-        ICACLIENT_DIR=$(find . -name "ICAClient" -type d | head -1)
-        
-        if [ -n "$ICACLIENT_DIR" ]; then
-          echo "Found ICAClient directory at $ICACLIENT_DIR"
-          cp -r $ICACLIENT_DIR/* $out/opt/Citrix/ICAClient/
-        else
-          echo "ERROR: Could not find ICAClient directory"
-          find . -type d | sort
-          exit 1
-        fi
-      fi
-      
-      # Clean up
-      cd /
-      rm -rf $EXTRACT_DIR
-      
-      # Ensure executables have proper permissions
-      find $out/opt/Citrix/ICAClient -type f -name "*.so*" -exec chmod +x {} \;
-      find $out/opt/Citrix/ICAClient -type f -executable -exec chmod +x {} \;
-      
-      # Create desktop file
-      cat > $out/share/applications/citrix-workspace.desktop << INNEREOF
-[Desktop Entry]
-Type=Application
-Name=Citrix Workspace
-Comment=Access virtual desktops and applications
-Exec=$out/bin/citrix-workspace %U
-Icon=$out/opt/Citrix/ICAClient/icons/receiver.png
-Terminal=false
-Categories=Network;RemoteAccess;
-MimeType=application/x-ica;
-INNEREOF
-    '';
-    
-    # Use a custom postInstall phase instead of autoPatchelfHook for more control
-    postInstall = ''
-      echo "Creating wrapper scripts..."
-      
-      # Create main launcher script
-      cat > $out/bin/citrix-workspace << INNEREOF
-#!/bin/sh
-export ICAROOT=$out/opt/Citrix/ICAClient
-export GTK_PATH=${pkgs.gtk3}/lib/gtk-3.0
-export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
-export GIO_MODULE_DIR=${pkgs.glib-networking}/lib/gio/modules
-
-# SSL settings
-export LIBCITRIX_DISABLE_CTX_MITM_CHECK=1
-export LIBCITRIX_CTX_SSL_FORCE_ACCEPT=1
-export LIBCITRIX_CTX_SSL_VERIFY_MODE=0
-export ICA_SSL_VERIFY_MODE=0
-
-# Set up library paths - this is the key to making it work without autoPatchelf
-export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [
-  pkgs.webkitgtk_4_1
-  pkgs.gtk3
-  pkgs.glib
-  pkgs.nss
-  pkgs.nspr
-  pkgs.openssl
-  pkgs.libidn
-  pkgs.gst_all_1.gstreamer
-  pkgs.gst_all_1.gst-plugins-base
-  pkgs.alsa-lib
-  pkgs.pcsclite
-  pkgs.libopus
-  pkgs.opencv
-  pkgs.xorg.libXmu
-  pkgs.xorg.libXtst
-  pkgs.xorg.libXaw
-  pkgs.xorg.libXinerama
-  pkgs.xorg.libX11
-  pkgs.xorg.libXext
-  pkgs.xorg.libXrender
-  pkgs.xorg.libXfixes
-  pkgs.libsecret
-  pkgs.stdenv.cc.cc.lib
-]}:$ICAROOT
-
-# Accept EULA automatically
-mkdir -p \$HOME/.ICAClient
-echo "1" > \$HOME/.ICAClient/.eula_accepted 2>/dev/null
-
-exec $out/opt/Citrix/ICAClient/selfservice "\$@"
-INNEREOF
-      chmod +x $out/bin/citrix-workspace
-      
-      # Create symlinks for main executables
-      ln -sf $out/opt/Citrix/ICAClient/wfica $out/bin/wfica
-      
-      # Also create a debug launcher
-      cat > $out/bin/citrix-workspace-debug << INNEREOF
-#!/bin/sh
-echo "Starting Citrix Workspace in debug mode..."
-export CITRIX_DEBUG=1
-export ICAROOT=$out/opt/Citrix/ICAClient
-export GTK_PATH=${pkgs.gtk3}/lib/gtk-3.0
-export SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
-export GIO_MODULE_DIR=${pkgs.glib-networking}/lib/gio/modules
-
-# Set up library paths - this is the key to making it work without autoPatchelf
-export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [
-  pkgs.webkitgtk_4_1
-  pkgs.gtk3
-  pkgs.glib
-  pkgs.nss
-  pkgs.nspr
-  pkgs.openssl
-  pkgs.libidn
-  pkgs.gst_all_1.gstreamer
-  pkgs.gst_all_1.gst-plugins-base
-  pkgs.alsa-lib
-  pkgs.pcsclite
-  pkgs.libopus
-  pkgs.opencv
-  pkgs.xorg.libXmu
-  pkgs.xorg.libXtst
-  pkgs.xorg.libXaw
-  pkgs.xorg.libXinerama
-  pkgs.xorg.libX11
-  pkgs.xorg.libXext
-  pkgs.xorg.libXrender
-  pkgs.xorg.libXfixes
-  pkgs.libsecret
-  pkgs.stdenv.cc.cc.lib
-]}:$ICAROOT
-
-echo "ICAROOT=$ICAROOT"
-echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-exec $out/opt/Citrix/ICAClient/selfservice "\$@"
-INNEREOF
-      chmod +x $out/bin/citrix-workspace-debug
-    '';
   };
-
 in {
-  # Add citrixWorkspace to the user's packages
-  home.packages = [ citrixWorkspace ];
+  # Use the custom citrix package and wrapper scripts
+  home.packages = [ 
+    customCitrix
+    citrixWrapperScripts
+  ];
   
-  # Create file handlers for .ica files
-  xdg.mimeApps = {
+  # Create file handlers for .ica files without replacing the entire mimeapps.list
+  xdg = {
     enable = true;
-    defaultApplications = {
-      "application/x-ica" = "citrix-workspace.desktop";
+    # Only manage the associations we need, don't replace the whole file
+    mimeApps = {
+      enable = true; 
+      # Use associations instead of defaultApplications to more gently handle existing config
+      associations.added = {
+        "application/x-ica" = "citrix-workspace.desktop";
+      };
+      defaultApplications = lib.mkForce {}; # Don't force any defaults
     };
   };
+
+  # Add convenient aliases for Citrix commands (as a backup)
+  programs.bash.shellAliases = {
+    citrix-workspace = "selfservice";
+    citrix-ica = "wfica";
+  };
+
+  # If you use zsh, uncomment these lines
+  # programs.zsh.shellAliases = {
+  #   citrix-workspace = "selfservice";
+  #   citrix-ica = "wfica";
+  # };
   
   # Add an activation script to set up required files
-  home.activation.setupCitrix = lib.hm.dag.entryAfter ["writeBoundary"] ''
+  /*home.activation.setupCitrix = lib.hm.dag.entryAfter ["writeBoundary"] ''
     # Create required directories
     mkdir -p $HOME/.ICAClient/cache
+    mkdir -p $HOME/.ICAClient/keystore/cacerts
     
     # Accept EULA automatically
     echo "1" > $HOME/.ICAClient/.eula_accepted
     
     # Create symlink for certificates if needed
     mkdir -p $HOME/.pki/nssdb || true
-  '';
+    
+    # Copy certificates to Citrix directory
+    echo "Setting up Citrix certificates..."
+    ln -sf ${pkgs.cacert}/etc/ssl/certs/* $HOME/.ICAClient/keystore/cacerts/ 2>/dev/null || true
+    
+    # Create module.ini if it doesn't exist
+    if [ ! -f "$HOME/.ICAClient/module.ini" ]; then
+      echo "Creating module.ini in $HOME/.ICAClient"
+      cat > $HOME/.ICAClient/module.ini << EOF
+[WFClient]
+UseSystemCertificates=On
+CertificatePath=${pkgs.cacert}/etc/ssl/certs
+SSLCertificateRevocationCheckPolicy=NoCheck
+CertificateRevocationCheckPolicy=NoCheck
+UseCertificateAsProgramID=1
+[WFClient.old]
+UseSystemCertificates=On
+[Hotkey Keys]
+DisableCtrlAltDel=True
+EOF
+    fi
+
+    # Create All_Regions.ini
+    echo "Creating All_Regions.ini in $HOME/.ICAClient"
+    cat > $HOME/.ICAClient/All_Regions.ini << EOF
+[Trusted_Domains]
+SystemRootCerts=1
+UseSysStore=1
+
+[WFClient]
+UseSystemStore=1
+SSLCertificateRevocationCheckPolicy=NoCheck
+CertificateRevocationCheckPolicy=NoCheck
+UseCertificateAsProgramID=1
+UseSystemCertificates=1
+SystemRootCerts=1
+EOF
+  '';*/
 }

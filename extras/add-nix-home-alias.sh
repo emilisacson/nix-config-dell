@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ALIAS_LINE='alias nix-home-rebuild="nix run .#homeConfigurations.$USER.activationPackage"'
+ALIAS_LINE='alias nix-home-rebuild="cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage"'
 BASHRC="$HOME/.bashrc"
 
 # Check if alias already exists

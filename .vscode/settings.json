@@ -7,7 +7,7 @@
     "git.autofetch": true,
     "github.copilot.chat.codeGeneration.instructions": [
         {
-            "text": "I use Fedora 42 WE with Cosmic DE and use Nix Flakes and Home Manager to manage my system. The followin command is used to rebuild the home manager config: cd ~/nix-config && nix run --impure .#homeConfigurations.$USER.activationPackage.",
+            "text": "I use Fedora 42 WE with Cosmic DE and use Nix Flakes and Home Manager to manage my system. The followin command is used to rebuild the home manager config: cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage.",
         }
     ]
 }

@@ -1,6 +1,11 @@
 { config, pkgs, inputs, ... }:
 
-{
+let
+  # Create a parameter to switch between desktop environments
+  # Valid options: "cosmic" or "gnome"
+  desktopEnvironment = "gnome";
+  # desktopEnvironment = "cosmic";
+in {
   home.username = "emil";
   home.homeDirectory = "/home/emil";
 
@@ -13,8 +18,11 @@
   nixpkgs.config.allowUnfreePredicate = _: true;
 
   imports = [
-    inputs.cosmic-manager.homeManagerModules.default
     ./applications/applications.nix
+    #./network/network.nix # Import network configuration
+  ] ++ (if desktopEnvironment == "cosmic" then [
+    inputs.cosmic-manager.homeManagerModules.default
     ./desktop/cosmic.nix
-  ];
+  ] else
+    [ ./desktop/gnome.nix ]);
 }

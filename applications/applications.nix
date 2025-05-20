@@ -2,7 +2,14 @@
 
 {
   # Import specific application modules
-  imports = [ ./citrix.nix ./vscode.nix ./steam.nix ];
+  imports = [
+    ./citrix.nix
+    ./vscode.nix
+    ./steam.nix
+    ./onedrive.nix
+    ./python.nix
+    ./brave.nix
+  ];
 
   # Install applications
   home.packages = with pkgs; [
@@ -15,6 +22,6 @@
     teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
 
     git
-    brave
+    obsidian
   ];
 }

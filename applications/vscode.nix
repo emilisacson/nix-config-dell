@@ -25,7 +25,7 @@
       buildInputs = oldAttrs.buildInputs ++ [ pkgs.krb5 pkgs.nixfmt-classic ];
     });
 
-    # Allow VS Code to manage its own extensions directory
+    # Extensions managable by VS Code
     mutableExtensionsDir = true;
 
     profiles.default = {
@@ -34,6 +34,8 @@
         jnoortheen.nix-ide
         github.copilot
         github.copilot-chat
+        ms-python.python
+        ms-python.vscode-pylance
       ];
 
       userSettings = {
@@ -41,32 +43,32 @@
         "nix.enableLanguageServer" = true;
         "github.copilot.enable" = true;
         "nix.formatterPath" = "${pkgs.nixfmt-classic}/bin/nixfmt";
+
+        # Python settings
+        "python.defaultInterpreterPath" =
+          "${pkgs.python3.withPackages (ps: with ps; [ tkinter ])}/bin/python3";
+        "python.formatting.provider" = "black";
+        "python.formatting.blackPath" =
+          "${pkgs.python3Packages.black}/bin/black";
+        "python.linting.enabled" = true;
+        "python.linting.flake8Enabled" = true;
+        "python.linting.flake8Path" =
+          "${pkgs.python3Packages.flake8}/bin/flake8";
+        "python.linting.mypyEnabled" = true;
+        "python.linting.mypyPath" = "${pkgs.python3Packages.mypy}/bin/mypy";
+        "python.analysis.extraPaths" = [
+          "${
+            pkgs.python3.withPackages (ps: with ps; [ tkinter ])
+          }/lib/python3.12/site-packages"
+        ]; # Using Python 3.12
+        "[python]" = {
+          "editor.formatOnSave" = true;
+          "editor.codeActionsOnSave" = { "source.organizeImports" = true; };
+        };
       };
     };
   };
 
   # Make nixfmt available in PATH for VS Code
   home.packages = [ pkgs.nixfmt-classic ];
-
-  # Old configuration for reference
-  # programs.vscode = {
-  #   enable = true;
-  #   package = pkgs.vscode;
-  #
-  #   profiles.default = {
-  #     extensions = with pkgs.vscode-extensions; [
-  #       arrterian.nix-env-selector
-  #       jnoortheen.nix-ide
-  #       github.copilot
-  #       github.copilot-chat
-  #     ];
-  #
-  #     userSettings = {
-  #       "editor.formatOnSave" = true;
-  #       "nix.enableLanguageServer" = true;
-  #       "github.copilot.enable" = true;
-  #       "update.mode" = "none";  # Disables update checking
-  #     };
-  #   };
-  # };
 }

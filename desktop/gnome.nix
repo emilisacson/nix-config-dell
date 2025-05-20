@@ -7,6 +7,7 @@
     gnome-extension-manager
     gnome-shell-extensions
     gnomeExtensions.dash-to-dock
+    gnomeExtensions.gsconnect # Add GSConnect extension
     # adw-gtk3
   ];
 
@@ -67,6 +68,7 @@
         "caffeine@patapon.info"
         "dash-to-dock@micxgx.gmail.com"
         "launch-new-instance@gnome-shell-extensions.gcampax.github.com"
+        "gsconnect@andyholmes.github.io" # Enable GSConnect extension
       ];
     };
 
@@ -85,6 +87,13 @@
 
     # Default applications
     "org/gnome/desktop/applications/browser" = { exec = "brave"; };
+    
+    # GSConnect settings
+    "org/gnome/shell/extensions/gsconnect" = {
+      enabled = true;
+      show-indicators = true;
+      show-status-icon = true;
+    };
   };
 
   # Add an activation script to set keyboard layout directly

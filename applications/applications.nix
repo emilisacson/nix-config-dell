@@ -2,17 +2,19 @@
 
 {
   # Import specific application modules
-  imports = [ ./citrix.nix ./vscode.nix ./steam.nix ./python.nix ./brave.nix ];
+  imports = [
+    ./citrix.nix
+    ./vscode.nix
+    ./steam.nix
+    ./python.nix
+    ./brave.nix
+    ./evolution.nix
+  ];
 
   # Install applications
   home.packages = with pkgs; [
     # Password manager
     keepassxc
-
-    # Email client
-    evolution
-    evolution-data-server # Backend data service for Evolution
-    pkgs.gnome-calendar # Calendar integration with Evolution
 
     # Microsoft applications and alternatives
     p3x-onenote # OneNote alternative (patrikx3/onenote)

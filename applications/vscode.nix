@@ -25,9 +25,10 @@
       buildInputs = oldAttrs.buildInputs ++ [ pkgs.krb5 pkgs.nixfmt-classic ];
     });
 
-    # Extensions managable by VS Code
+    # Allow VS Code to manage extensions
     mutableExtensionsDir = true;
 
+    # Just install the extensions, but let VS Code manage the settings
     profiles.default = {
       extensions = with unstable.vscode-extensions; [
         arrterian.nix-env-selector
@@ -37,35 +38,6 @@
         ms-python.python
         ms-python.vscode-pylance
       ];
-
-      userSettings = {
-        "editor.formatOnSave" = true;
-        "nix.enableLanguageServer" = true;
-        "github.copilot.enable" = true;
-        "nix.formatterPath" = "${pkgs.nixfmt-classic}/bin/nixfmt";
-
-        # Python settings
-        "python.defaultInterpreterPath" =
-          "${pkgs.python3.withPackages (ps: with ps; [ tkinter ])}/bin/python3";
-        "python.formatting.provider" = "black";
-        "python.formatting.blackPath" =
-          "${pkgs.python3Packages.black}/bin/black";
-        "python.linting.enabled" = true;
-        "python.linting.flake8Enabled" = true;
-        "python.linting.flake8Path" =
-          "${pkgs.python3Packages.flake8}/bin/flake8";
-        "python.linting.mypyEnabled" = true;
-        "python.linting.mypyPath" = "${pkgs.python3Packages.mypy}/bin/mypy";
-        "python.analysis.extraPaths" = [
-          "${
-            pkgs.python3.withPackages (ps: with ps; [ tkinter ])
-          }/lib/python3.12/site-packages"
-        ]; # Using Python 3.12
-        "[python]" = {
-          "editor.formatOnSave" = true;
-          "editor.codeActionsOnSave" = { "source.organizeImports" = true; };
-        };
-      };
     };
   };
 

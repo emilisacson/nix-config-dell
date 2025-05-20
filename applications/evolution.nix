@@ -5,7 +5,7 @@
   home.packages = with pkgs; [
     evolution
     evolution-data-server
-    gnome.gnome-calendar
+    gnome-calendar # Calendar integration with Evolution (moved to top-level)
     gnome-online-accounts # For online account integration
   ];
 
@@ -14,9 +14,11 @@
     # General Evolution settings
     "org/gnome/evolution/mail" = {
       layout = 1; # 0 = classic view, 1 = vertical view
-      forward-style-name = "attached"; # Forwarding style: inline, attached, quoted
+      forward-style-name =
+        "attached"; # Forwarding style: inline, attached, quoted
       reply-style-name = "quoted"; # Reply style
-      composer-reply-start-bottom = true; # Start typing at the bottom when replying
+      composer-reply-start-bottom =
+        true; # Start typing at the bottom when replying
     };
 
     # Default folder settings

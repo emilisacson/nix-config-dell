@@ -1,4 +1,4 @@
-{ pkgs, unstable, ... }:
+{ pkgs, unstable, lib, config, ... }:
 
 {
   /* Insiders version of VS Code
@@ -43,4 +43,11 @@
 
   # Make nixfmt available in PATH for VS Code
   home.packages = [ pkgs.nixfmt-classic ];
+
+  # Add an activation script to set up VS Code settings
+  home.activation.vscodeProfiles = lib.mkForce
+    (lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      echo "Setting up VS Code settings..."
+      $DRY_RUN_CMD ${config.home.homeDirectory}/.nix-config/extras/setup-vscode-settings.sh
+    '');
 }

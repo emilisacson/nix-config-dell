@@ -24,7 +24,13 @@
     let
       system = "x86_64-linux";
       username = "emil";
-      pkgs = nixpkgs.legacyPackages.${system};
+      
+      # Configure pkgs with overlays
+      pkgs = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
+      
       unstable = nixpkgs-unstable.legacyPackages.${system};
     in {
       homeConfigurations.${username} =

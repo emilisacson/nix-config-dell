@@ -9,6 +9,7 @@
     ./python.nix
     ./brave.nix
     ./evolution.nix
+    ./onedrive.nix
   ];
 
   # Install applications

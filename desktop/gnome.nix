@@ -76,7 +76,10 @@
 
     # Default applications
     "org/gnome/desktop/applications/browser" = { exec = "brave"; };
-    
+
+    # Set Evolution as default email client
+    "org/gnome/desktop/applications/mail" = { exec = "evolution"; };
+
     # GSConnect settings
     "org/gnome/shell/extensions/gsconnect" = {
       enabled = true;

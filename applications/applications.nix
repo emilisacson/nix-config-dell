@@ -19,7 +19,6 @@
 
     # Microsoft applications and alternatives
     p3x-onenote # OneNote alternative (patrikx3/onenote)
-    onedrive # OneDrive client (abraunegg/onedrive)
     teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
 
     git

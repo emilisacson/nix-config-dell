@@ -28,17 +28,6 @@
     "org/gnome/system/locale" = { region = "sv_SE.UTF-8"; };
     "system/locale" = { region = "sv_SE.UTF-8"; };
 
-    # Language settings - Swedish keyboard only
-    "org/gnome/desktop/input-sources" = {
-      sources = [ (lib.hm.gvariant.mkTuple [ "xkb" "se" ]) ];
-      xkb-options = [ "terminate:ctrl_alt_bksp" ];
-      current = 0; # Ensure this is selected by default
-    };
-
-    # Additional input method configuration to ensure Swedish keyboard is applied
-    "org/gnome/desktop/input-sources".mru-sources =
-      [ (lib.hm.gvariant.mkTuple [ "xkb" "se" ]) ];
-
     # Date and time format for Swedish locale
     "org/gnome/desktop/calendar" = { show-weekdate = true; };
 
@@ -95,12 +84,4 @@
       show-status-icon = true;
     };
   };
-
-  # Add an activation script to set keyboard layout directly
-  home.activation.setSwedishKeyboard =
-    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      if command -v gsettings &> /dev/null; then
-        $DRY_RUN_CMD gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'se')]"
-      fi
-    '';
 }

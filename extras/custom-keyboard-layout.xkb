@@ -1,0 +1,22 @@
+// Custom XKB configuration to use QWERTY layout with Ctrl key
+xkb_keymap {
+    xkb_keycodes  { include "evdev" };
+    xkb_types     { include "complete" };
+    xkb_compat    { include "complete" };
+    xkb_symbols   {
+        include "pc+se(svdvorak)+se:2+inet(evdev)"
+        
+        // Switch to QWERTY when Ctrl is pressed
+        key <LCTL> {
+            type[Group1] = "ONE_LEVEL",
+            symbols[Group1] = [ Control_L ],
+            actions[Group1] = [ SetGroup(group=2) ]
+        };
+        key <RCTL> {
+            type[Group1] = "ONE_LEVEL",
+            symbols[Group1] = [ Control_R ],
+            actions[Group1] = [ SetGroup(group=2) ]
+        };
+    };
+    xkb_geometry  { include "pc(pc105)" };
+};

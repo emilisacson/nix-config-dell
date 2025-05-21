@@ -3,7 +3,7 @@
 {
   # Import specific application modules
   imports = [
-    ./citrix.nix
+    #./citrix.nix
     ./vscode.nix
     ./steam.nix
     ./python.nix
@@ -15,7 +15,7 @@
     ./flameshot.nix
     ./obs-studio.nix
     ./media-codecs.nix
-    ./obsidian.nix # Added Obsidian configuration
+    ./obsidian.nix
   ];
 
   # Install applications
@@ -23,10 +23,9 @@
     keepassxc
 
     p3x-onenote # OneNote alternative (patrikx3/onenote)
-    teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
+    #teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
 
     git
-    hwinfo
-    # obsidian # Obsidian is now managed in its own module
+    tmux
   ];
 }

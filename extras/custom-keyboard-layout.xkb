@@ -1,13 +1,14 @@
-// Custom XKB configuration to use QWERTY layout with Ctrl key
-// Enhanced version with stronger layout enforcement
+// Enhanced XKB configuration for Swedish Dvorak (svdvorak) with Ctrl key behavior
+// Compatible with both Wayland and Xwayland
 xkb_keymap {
     xkb_keycodes  { include "evdev" };
     xkb_types     { include "complete" };
     xkb_compat    { include "complete" };
     xkb_symbols   {
+        // Include Swedish Dvorak layout and standard Swedish as fallback
         include "pc+se(svdvorak)+se:2+inet(evdev)"
         
-        // Switch to QWERTY when Ctrl is pressed
+        // Switch to QWERTY (Group 2, which is Swedish) when Ctrl is pressed
         key <LCTL> {
             type[Group1] = "ONE_LEVEL",
             symbols[Group1] = [ Control_L ],
@@ -17,6 +18,18 @@ xkb_keymap {
             type[Group1] = "ONE_LEVEL",
             symbols[Group1] = [ Control_R ],
             actions[Group1] = [ SetGroup(group=2) ]
+        };
+        
+        // Ensure keys release back to svdvorak when Ctrl is released
+        key <LCTL> {
+            type[Group2] = "ONE_LEVEL",
+            symbols[Group2] = [ Control_L ],
+            actions[Group2] = [ SetGroup(group=1) ]
+        };
+        key <RCTL> {
+            type[Group2] = "ONE_LEVEL",
+            symbols[Group2] = [ Control_R ],
+            actions[Group2] = [ SetGroup(group=1) ]
         };
     };
     xkb_geometry  { include "pc(pc105)" };

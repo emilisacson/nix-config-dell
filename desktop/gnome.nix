@@ -5,10 +5,12 @@
   home.packages = with pkgs; [
     gnome-tweaks
     gnome-extension-manager
+    gnome-browser-connector # Allows browser integration for extensions.gnome.org
+    chrome-gnome-shell # Browser connector for Chrome/Firefox
     gnome-shell-extensions
-    gnomeExtensions.dash-to-dock
+    gnomeExtensions.dash-to-panel # For all monitors with configurable positions
     gnomeExtensions.gsconnect # Add GSConnect extension
-    # adw-gtk3
+    gnomeExtensions.tiling-assistant # Advanced window tiling with multi-monitor support
   ];
 
   # Configure dconf settings for GNOME
@@ -51,27 +53,59 @@
 
     "org/gnome/shell" = {
       disable-user-extensions = false;
+      development-tools = true; # Enable development tools for extensions
+      disable-extension-version-validation =
+        true; # Allow installing extensions for different GNOME versions
 
       enabled-extensions = [
         "appindicatorsupport@rgcjonas.gmail.com"
         "caffeine@patapon.info"
-        "dash-to-dock@micxgx.gmail.com"
-        "launch-new-instance@gnome-shell-extensions.gcampax.github.com"
+        "dash-to-panel@jderose9.github.com" # Add Dash to Panel extension
         "gsconnect@andyholmes.github.io" # Enable GSConnect extension
+        "tiling-assistant@leleat-on-github" # Tiling assistant
+        "status-icons@gnome-shell-extensions.gcampax.github.com"
+        "system-monitor@gnome-shell-extensions.gcampax.github.com"
       ];
     };
 
-    # Dock settings
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      background-opacity = 0.8;
-      click-action = "previews";
-      custom-theme-shrink = true;
-      dash-max-icon-size = 32;
-      dock-fixed = true;
-      dock-position = "LEFT";
-      extend-height = true;
-      height-fraction = 0.9;
-      intellihide-mode = "FOCUS_APPLICATION_WINDOWS";
+    # Dash to Panel settings (for multi-monitor setup)
+    "org/gnome/shell/extensions/dash-to-panel" = {
+      animate-appicon-hover-animation-extent =
+        ''{"RIPPLE": 4, "PLANK": 4, "SIMPLE": 1}'';
+      appicon-margin = 8;
+      appicon-padding = 4;
+      dot-position = "LEFT";
+      dot-style-focused = "METRO";
+      dot-style-unfocused = "DOTS";
+      extension-version = 68;
+      group-apps = true;
+      hotkeys-overlay-combo = "TEMPORARILY";
+      intellihide = false;
+      isolate-monitors = true;
+      isolate-workspaces = true;
+      multi-monitors = true;
+      panel-anchors = ''
+        {"AOC-PCSN4JA000069":"MIDDLE","LGD-0x00000000":"MIDDLE","AOC-PCSN4JA000072":"MIDDLE"}'';
+      panel-element-positions = ''
+        {"AOC-PCSN4JA000069":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":true,"position":"centerMonitor"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'';
+      panel-element-positions-monitors-sync = false;
+      panel-lengths =
+        ''{"AOC-PCSN4JA000069":-1,"LGD-0x00000000":-1,"AOC-PCSN4JA000072":-1}'';
+      panel-positions = ''
+        {"AOC-PCSN4JA000069":"TOP","LGD-0x00000000":"RIGHT","AOC-PCSN4JA000072":"RIGHT"}'';
+      panel-sizes = ''{"AOC-PCSN4JA000069":48}'';
+      prefs-opened = true;
+      primary-monitor = "AOC-PCSN4JA000069";
+      show-favorites = true;
+      show-running-apps = true;
+      show-window-previews = true;
+      stockgs-keep-top-panel = false;
+      stockgs-panelbtn-click-only = false;
+      trans-panel-opacity = 0.8;
+      trans-use-custom-opacity = true;
+      trans-use-dynamic-opacity = true;
+      tray-size = 16;
+      window-preview-title-position = "TOP";
     };
 
     # Default applications
@@ -85,6 +119,12 @@
       enabled = true;
       show-indicators = true;
       show-status-icon = true;
+    };
+
+    # GNOME Shell Extensions settings - Allow network access
+    "org/gnome/shell/extensions" = {
+      allowed-extensions = [ "extensions.gnome.org" "localhost" ];
+      user-extensions-enabled = true;
     };
   };
 }

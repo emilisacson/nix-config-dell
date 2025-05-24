@@ -10,6 +10,7 @@
       "cjpalhdlnbpafiamejdnhcphjbkeiagm" # uBlock Origin
       "nngceckbapebfimnlniiiahkandclblb" # Bitwarden
       "eimadpbcbfnmbkopoojfekhnkhdbieeh" # Dark Reader
+      "gphhapmejobijbbhgpjhcjognlahblep" # GNOME Shell Integration
     ];
     commandLineArgs = [
       "--enable-features=VaapiVideoDecoder,VaapiVideoEncoder,ExtensionServiceMaybeAllowManagement"
@@ -48,6 +49,10 @@
           update_url = "https://clients2.google.com/service/update2/crx";
         };
         "eimadpbcbfnmbkopoojfekhnkhdbieeh" = {
+          installation_mode = "force_installed";
+          update_url = "https://clients2.google.com/service/update2/crx";
+        };
+        "gphhapmejobijbbhgpjhcjognlahblep" = {
           installation_mode = "force_installed";
           update_url = "https://clients2.google.com/service/update2/crx";
         };

@@ -4,7 +4,7 @@
   # Install required packages for keyboard customization
   home.packages = with pkgs; [
     xorg.xkbcomp # Add xkbcomp for custom keyboard layouts
-    libnotify    # For notify-send in the script
+    libnotify # For notify-send in the script
   ];
 
   # Configure dual keyboard layout - SVDVORAK and Swedish QWERTY
@@ -13,11 +13,11 @@
     "org/gnome/desktop/input-sources" = {
       sources = [
         (lib.hm.gvariant.mkTuple [ "xkb" "se+svdvorak" ]) # SVDVORAK as primary
-        (lib.hm.gvariant.mkTuple [ "xkb" "se" ])        # Swedish QWERTY as secondary
+        (lib.hm.gvariant.mkTuple [ "xkb" "se" ]) # Swedish QWERTY as secondary
       ];
-      xkb-options = [ 
+      xkb-options = [
         "terminate:ctrl_alt_bksp"
-        "lv3:ralt_switch"        # Right Alt as AltGr for special characters
+        "lv3:ralt_switch" # Right Alt as AltGr for special characters
       ];
       current = 0; # SVDVORAK as default
     };

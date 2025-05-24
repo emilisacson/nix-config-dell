@@ -20,7 +20,8 @@ in {
   imports = [
     ./applications/applications.nix
     ./desktop/keyboard.nix # Import keyboard configuration
-    #./network/network.nix # Import network configuration
+    ./desktop/nvidia.nix # Import NVIDIA configuration
+    ./network/network.nix # Import network configuration
   ] ++ (if desktopEnvironment == "cosmic" then [
     inputs.cosmic-manager.homeManagerModules.default
     ./desktop/cosmic.nix

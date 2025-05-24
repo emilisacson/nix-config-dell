@@ -1,4 +1,5 @@
 // Custom XKB configuration to use QWERTY layout with Ctrl key
+// Enhanced version with stronger layout enforcement
 xkb_keymap {
     xkb_keycodes  { include "evdev" };
     xkb_types     { include "complete" };

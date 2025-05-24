@@ -60,17 +60,6 @@ if [ -f ~/.nix-profile/bin/nixfmt ]; then
     mkdir -p ~/.local/bin
     ln -sf ~/.nix-profile/bin/nixfmt ~/.local/bin/nixfmt
     echo "Created symlink for nixfmt in ~/.local/bin"
-    
-    # Try to create symlink in the expected system path
-    # Only attempt if sudo is available
-    if command -v sudo &> /dev/null; then
-        sudo mkdir -p /run/current-system/sw/bin
-        sudo ln -sf ~/.nix-profile/bin/nixfmt /run/current-system/sw/bin/nixfmt
-        echo "Created symlink for nixfmt in system path"
-    else
-        echo "Warning: 'sudo' command not available. Could not create system symlink."
-        echo "VS Code will only look for nixfmt in ~/.local/bin and ~/.nix-profile/bin"
-    fi
 fi
 
-echo "Done! VS Code should now be able to save settings properly."
+echo "VS Code settings applied successfully!"

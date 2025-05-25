@@ -37,6 +37,7 @@
         github.copilot-chat
         ms-python.python
         ms-python.vscode-pylance
+        shd101wyy.markdown-preview-enhanced
       ];
     };
   };

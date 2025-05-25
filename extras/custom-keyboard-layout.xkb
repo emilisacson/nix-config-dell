@@ -8,28 +8,27 @@ xkb_keymap {
         // Include Swedish Dvorak layout and standard Swedish as fallback
         include "pc+se(svdvorak)+se:2+inet(evdev)"
         
-        // Switch to QWERTY (Group 2, which is Swedish) when Ctrl is pressed
-        key <LCTL> {
-            type[Group1] = "ONE_LEVEL",
-            symbols[Group1] = [ Control_L ],
-            actions[Group1] = [ SetGroup(group=2) ]
-        };
-        key <RCTL> {
-            type[Group1] = "ONE_LEVEL",
-            symbols[Group1] = [ Control_R ],
-            actions[Group1] = [ SetGroup(group=2) ]
-        };
+        // Override default group names for clarity
+        name[Group1]= "Swedish (Dvorak)";
+        name[Group2]= "Swedish (QWERTY)";
         
-        // Ensure keys release back to svdvorak when Ctrl is released
+        // Define Ctrl keys with proper group switching behavior
+        // This uses a two-level key type to handle press/release correctly
         key <LCTL> {
-            type[Group2] = "ONE_LEVEL",
-            symbols[Group2] = [ Control_L ],
-            actions[Group2] = [ SetGroup(group=1) ]
+            type[Group1] = "CTRL_ALT",
+            type[Group2] = "CTRL_ALT",
+            symbols[Group1] = [ Control_L, Control_L ],
+            symbols[Group2] = [ Control_L, Control_L ],
+            actions[Group1] = [ SetGroup(group=2), SetGroup(group=1) ],
+            actions[Group2] = [ NoAction(), NoAction() ]
         };
         key <RCTL> {
-            type[Group2] = "ONE_LEVEL",
-            symbols[Group2] = [ Control_R ],
-            actions[Group2] = [ SetGroup(group=1) ]
+            type[Group1] = "CTRL_ALT", 
+            type[Group2] = "CTRL_ALT",
+            symbols[Group1] = [ Control_R, Control_R ],
+            symbols[Group2] = [ Control_R, Control_R ],
+            actions[Group1] = [ SetGroup(group=2), SetGroup(group=1) ],
+            actions[Group2] = [ NoAction(), NoAction() ]
         };
     };
     xkb_geometry  { include "pc(pc105)" };

@@ -11,6 +11,10 @@
     gnomeExtensions.dash-to-panel # For all monitors with configurable positions
     gnomeExtensions.gsconnect # Add GSConnect extension
     gnomeExtensions.tiling-assistant # Advanced window tiling with multi-monitor support
+    gnomeExtensions.vitals # System monitor (CPU, memory, temp, etc.)
+    gnomeExtensions.caffeine # Prevent screen lock/suspend
+    gnomeExtensions.ddterm # Drop-down terminal
+    # Note: Custom Command Menu not available in nixpkgs, install manually from extensions.gnome.org
   ];
 
   # Configure dconf settings for GNOME
@@ -64,7 +68,9 @@
         "gsconnect@andyholmes.github.io" # Enable GSConnect extension
         "tiling-assistant@leleat-on-github" # Tiling assistant
         "status-icons@gnome-shell-extensions.gcampax.github.com"
-        "system-monitor@gnome-shell-extensions.gcampax.github.com"
+        "Vitals@CoreCoding.com" # System monitor with CPU, memory, temperature, etc.
+        "ddterm@amezin.github.com" # Drop-down terminal
+        # "custom-command-menu@storageb.github.com" # Install manually from extensions.gnome.org
       ];
     };
 
@@ -93,7 +99,8 @@
         ''{"AOC-PCSN4JA000069":-1,"LGD-0x00000000":-1,"AOC-PCSN4JA000072":-1}'';
       panel-positions = ''
         {"AOC-PCSN4JA000069":"TOP","LGD-0x00000000":"RIGHT","AOC-PCSN4JA000072":"RIGHT"}'';
-      panel-sizes = ''{"AOC-PCSN4JA000069":48}'';
+      panel-sizes =
+        ''{"AOC-PCSN4JA000069":48,"LGD-0x00000000":64,"AOC-PCSN4JA000072":48}'';
       prefs-opened = true;
       primary-monitor = "AOC-PCSN4JA000069";
       show-favorites = true;
@@ -125,6 +132,40 @@
     "org/gnome/shell/extensions" = {
       allowed-extensions = [ "extensions.gnome.org" "localhost" ];
       user-extensions-enabled = true;
+    };
+
+    # Vitals extension settings
+    "org/gnome/shell/extensions/vitals" = {
+      hot-sensors = [ "_processor_usage_" "_memory_usage_" "_gpu_usage_" ];
+      position-in-panel =
+        0; # Position in top panel (0 = left, 1 = center, 2 = right)
+      show-battery = true;
+      show-cpu = true;
+      show-memory = true;
+      show-network = true;
+      show-temperature = true;
+      show-gpu = true;
+      update-time = 2; # Update interval in seconds
+    };
+
+    # ddterm (drop-down terminal) settings
+    "org/gnome/shell/extensions/ddterm" = {
+      ddterm-toggle-hotkey =
+        [ "<Super>grave" ]; # Super + ` (backtick) to toggle
+      window-position = "top";
+      window-size = 0.5; # 50% of screen height
+      window-monitor = "primary";
+      tab-policy = "automatic";
+      hide-when-focus-lost = true;
+      animation-time = 0.2;
+    };
+
+    # Caffeine extension settings (already enabled, adding config)
+    "org/gnome/shell/extensions/caffeine" = {
+      indicator-position-max = 2; # Position in system tray
+      show-indicator = "always";
+      show-notifications = true;
+      enable-fullscreen = true; # Auto-enable when fullscreen apps are running
     };
   };
 }

@@ -8,11 +8,13 @@
     ./steam.nix
     ./python.nix
     ./brave.nix
-    ./evolution.nix
+    # ./evolution.nix
     ./onedrive.nix
     # ./onenote.nix
     ./discord.nix
     ./flameshot.nix
+    ./obs-studio.nix
+    ./media-codecs.nix
   ];
 
   # Install applications

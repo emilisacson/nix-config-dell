@@ -116,10 +116,19 @@
     };
 
     # Default applications
-    "org/gnome/desktop/applications/browser" = { exec = "brave"; };
+    "org/gnome/desktop/default-applications/office" = {
+      calendar = "org.gnome.Calendar.desktop";
+      tasks = "org.gnome.Evolution.desktop";
+    };
 
-    # Set Evolution as default email client
-    "org/gnome/desktop/applications/mail" = { exec = "evolution"; };
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      email-client = "org.gnome.Evolution.desktop";
+    };
+
+    # Set default browser
+    "org/gnome/desktop/default-applications/web" = {
+      browser = "brave-browser.desktop";
+    };
 
     # GSConnect settings
     "org/gnome/shell/extensions/gsconnect" = {
@@ -153,7 +162,7 @@
       ddterm-toggle-hotkey =
         [ "<Super>grave" ]; # Super + ` (backtick) to toggle
       window-position = "top";
-      window-size = 0.5; # 50% of screen height
+      window-size = 0.25; # 25% of screen height
       window-monitor = "primary";
       tab-policy = "automatic";
       hide-when-focus-lost = true;

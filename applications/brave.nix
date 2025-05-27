@@ -13,10 +13,25 @@
       "gphhapmejobijbbhgpjhcjognlahblep" # GNOME Shell Integration
     ];
     commandLineArgs = [
-      "--enable-features=VaapiVideoDecoder,VaapiVideoEncoder,ExtensionServiceMaybeAllowManagement"
+      # Hardware video acceleration flags for H.265/HEVC support
+      "--enable-features=VaapiVideoDecoder,VaapiVideoEncoder,VaapiIgnoreDriverChecks,PlatformHEVCDecoderSupport"
       "--disable-features=UseChromeOSDirectVideoDecoder"
+      "--use-gl=desktop"
+      "--enable-gpu-rasterization"
+      "--enable-zero-copy"
+      "--enable-hardware-overlays"
+      "--enable-oop-rasterization"
+
+      # NVIDIA-specific acceleration
+      "--ignore-gpu-blocklist"
+      "--enable-gpu-sandbox"
+      "--enable-accelerated-video-decode"
+      "--enable-accelerated-video-encode"
+
+      # Other Brave-specific flags
       "--force-dark-mode"
       "--auth-server-whitelist='*'"
+      "--enable-features=ExtensionServiceMaybeAllowManagement"
     ];
   };
 

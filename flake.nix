@@ -17,26 +17,32 @@
         home-manager.follows = "home-manager";
       };
     };
+    # Add nixGL for OpenGL support in non-NixOS systems
+    nixgl = {
+      url = "github:nix-community/nixGL";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs =
-    inputs@{ nixpkgs, nixpkgs-unstable, home-manager, cosmic-manager, ... }:
+  outputs = inputs@{ nixpkgs, nixpkgs-unstable, home-manager, cosmic-manager
+    , nixgl, ... }:
     let
       system = "x86_64-linux";
       username = "emil";
-      
+
       # Configure pkgs with overlays
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        overlays = [ nixgl.overlay ];
       };
-      
+
       unstable = nixpkgs-unstable.legacyPackages.${system};
     in {
       homeConfigurations.${username} =
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
-          extraSpecialArgs = { inherit inputs unstable; };
+          extraSpecialArgs = { inherit inputs unstable nixgl; };
           modules =
             [ ./home.nix cosmic-manager.homeManagerModules.cosmic-manager ];
         };

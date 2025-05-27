@@ -15,6 +15,7 @@
     ./flameshot.nix
     ./obs-studio.nix
     ./media-codecs.nix
+    ./obsidian.nix # Added Obsidian configuration
   ];
 
   # Install applications
@@ -25,6 +26,7 @@
     teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
 
     git
-    obsidian
+    hwinfo
+    # obsidian # Obsidian is now managed in its own module
   ];
 }

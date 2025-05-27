@@ -42,8 +42,7 @@
     name = "OBS Studio (with nixGL)";
     comment =
       "Free and open source software for live streaming and screen recording";
-    exec =
-      "${pkgs.nixgl.auto.nixGLDefault}/bin/nixGLDefault ${pkgs.obs-studio}/bin/obs";
+    exec = "obs-nixgl"; # Changed to run the custom wrapper script
     icon = "com.obsproject.Studio";
     terminal = false;
     categories = [ "AudioVideo" "Recorder" ];
@@ -71,5 +70,19 @@
     terminal = false;
     categories = [ "AudioVideo" "Recorder" ];
     noDisplay = true; # Hidden by default, available if needed
+  };
+
+  # Declaratively override the default com.obsproject.Studio.desktop
+  # to hide it, ensuring the nixGL version is preferred.
+  home.file.".local/share/applications/com.obsproject.Studio.desktop" = {
+    text = ''
+      [Desktop Entry]
+      Name=OBS Studio (Default - Hidden by Nix)
+      Comment=Default OBS Studio entry, hidden by Nix to prefer nixGL version
+      NoDisplay=true
+      Type=Application
+    '';
+    # This ensures the file is created if it doesn't exist, or overwritten if it does.
+    # It will be managed by Home Manager.
   };
 }

@@ -30,7 +30,15 @@
 
     # Just install the extensions, but let VS Code manage the settings
     profiles.default = {
-      extensions = with unstable.vscode-extensions; [
+      extensions = let
+        yutengjing-modify-file-warning =
+          unstable.vscode-utils.extensionFromVscodeMarketplace {
+            name = "modify-file-warning";
+            publisher = "yutengjing";
+            version = "1.0.0";
+            sha256 = "sha256-U86l4XIfr2LVD93tU6wfMREvnRGejnJWxDaLJAXiJes=";
+          };
+      in with unstable.vscode-extensions; [
         arrterian.nix-env-selector
         jnoortheen.nix-ide
         github.copilot
@@ -38,6 +46,7 @@
         ms-python.python
         ms-python.vscode-pylance
         shd101wyy.markdown-preview-enhanced
+        yutengjing-modify-file-warning # Custom extension from marketplace
       ];
     };
   };

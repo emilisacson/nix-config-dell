@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, systemConfig ? null, ... }:
 
 {
   # Enable GNOME desktop environment configuration

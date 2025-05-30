@@ -1,29 +1,24 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, systemConfig ? null, ... }:
 
-{
-  # NVIDIA driver packages and tools
-  # These packages are installed via Nix, but the kernel modules are handled by Fedora/RPM
-  home.packages = with pkgs; [
-    # Basic packages that should be available in most distributions
-    libglvnd # Vendor-neutral OpenGL dispatch library
-    wev # Wayland event viewer (like xev for X11)
-    wl-clipboard # Command-line copy/paste utilities for Wayland
+let
+  # Check if this system has NVIDIA GPU based on detection
+  hasNvidia = if systemConfig != null && systemConfig ? currentSystem
+  && systemConfig.currentSystem ? hasNvidia then
+    systemConfig.currentSystem.hasNvidia
+  else
+    false; # Default to false if detection unavailable (for compatibility)
+in {
+  # NVIDIA-specific packages and tools - only install if NVIDIA GPU detected
+  home.packages = with pkgs;
+    lib.optionals hasNvidia [
+      # CUDA packages for NVIDIA GPU compute capabilities
+      cudaPackages.cuda_cudart # CUDA runtime
+      cudaPackages.cuda_nvcc # NVIDIA CUDA Compiler
+    ];
 
-    # X11 and graphics tools
-    xorg.xhost # For managing access to the X server
-    glxinfo # OpenGL information tool
-    vulkan-tools # Vulkan utilities (vulkaninfo, etc.)
-    vulkan-loader # Vulkan ICD loader
-    wayland-utils # Wayland utilities including wayland-info
-
-    # CUDA packages for NVIDIA GPU compute capabilities
-    cudaPackages.cuda_cudart # CUDA runtime
-    cudaPackages.cuda_nvcc # NVIDIA CUDA Compiler
-  ];
-
-  # Create a script to check NVIDIA driver status
+  # Create a script to check NVIDIA-specific driver status
   # This will provide detailed information about your NVIDIA setup
-  home.file.".local/bin/check-nvidia.sh" = {
+  home.file.".local/bin/check-nvidia.sh" = lib.mkIf hasNvidia {
     executable = true;
     text = ''
       #!/usr/bin/env bash
@@ -35,52 +30,44 @@
         echo "nvidia-smi not found. NVIDIA drivers may not be installed correctly."
       fi
 
-      echo -e "\n=== Current Display Server ==="
-      if [[ "$XDG_SESSION_TYPE" == "wayland" ]]; then
-        echo "Currently running on Wayland"
-        
-        echo -e "\n=== Wayland Compositor Info ==="
-        if command -v wayland-info &> /dev/null; then
-          wayland-info | head -15  # Show just the first 15 lines to avoid information overload
-        else
-          echo "wayland-info not found. Cannot determine Wayland compositor details."
-        fi
-      elif [[ "$XDG_SESSION_TYPE" == "x11" ]]; then
-        echo "Currently running on X11"
-        
-        echo -e "\n=== X11 OpenGL Information ==="
-        if command -v glxinfo &> /dev/null; then
-          glxinfo | grep -E "OpenGL vendor|OpenGL renderer|OpenGL version"
-        else
-          echo "glxinfo not found. Cannot determine OpenGL information."
-        fi
+      echo -e "\n=== NVIDIA GPU Information ==="
+      if command -v lspci &> /dev/null; then
+        echo "NVIDIA devices found:"
+        lspci | grep -i nvidia
       else
-        echo "Unknown display server: $XDG_SESSION_TYPE"
+        echo "lspci not found. Cannot detect NVIDIA devices."
       fi
 
-      # Check for Vulkan support
-      echo -e "\n=== Vulkan Support ==="
+      echo -e "\n=== NVIDIA Vulkan Support ==="
       if command -v vulkaninfo &> /dev/null; then
-        vulkaninfo --summary 2>/dev/null | grep -E "GPU|deviceName|driverVersion" | head -10
+        vulkaninfo --summary 2>/dev/null | grep -i nvidia | head -5
       else
-        echo "vulkaninfo not found. Cannot determine Vulkan support."
+        echo "vulkaninfo not found. Cannot determine NVIDIA Vulkan support."
+      fi
+
+      echo -e "\n=== NVIDIA CUDA Support ==="
+      if command -v nvcc &> /dev/null; then
+        nvcc --version
+      else
+        echo "nvcc not found. CUDA toolkit may not be installed."
       fi
     '';
-  }; # Create a symlink for the Wayland setup script
-  home.file.".local/bin/setup-nvidia-wayland.sh" = {
+  }; # Create symlinks for NVIDIA Wayland setup scripts - only if NVIDIA detected
+  home.file.".local/bin/setup-nvidia-wayland.sh" = lib.mkIf hasNvidia {
     source = ../extras/setup-nvidia-wayland.sh;
     executable = true;
   };
 
   # Create a symlink for the permanent Wayland environment setup script
   # This makes the environment variables persist across sessions
-  home.file.".local/bin/setup-permanent-nvidia-wayland.sh" = {
-    source = ../extras/setup-permanent-nvidia-wayland.sh;
-    executable = true;
-  };
+  home.file.".local/bin/setup-permanent-nvidia-wayland.sh" =
+    lib.mkIf hasNvidia {
+      source = ../extras/setup-permanent-nvidia-wayland.sh;
+      executable = true;
+    };
 
-  # Documentation about the NVIDIA setup
-  home.file.".local/share/nvidia-setup-readme.md" = {
+  # Documentation about the NVIDIA setup - only if NVIDIA detected
+  home.file.".local/share/nvidia-setup-readme.md" = lib.mkIf hasNvidia {
     text = ''
       # NVIDIA Setup for Fedora with Nix/Home Manager
 

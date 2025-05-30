@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, systemConfig ? null, ... }:
 
 {
   # Enable cosmic-manager base configuration

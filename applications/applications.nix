@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, systemConfig ? null, ... }:
 
 {
   # Import specific application modules
@@ -27,5 +27,6 @@
 
     git
     tmux
+    appeditor
   ];
 }

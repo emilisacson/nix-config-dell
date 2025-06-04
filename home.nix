@@ -1,4 +1,4 @@
-{ config, pkgs, inputs, lib, systemConfig ? null, ... }:
+{ config, pkgs, inputs, lib, ... }:
 
 let
   # Create a parameter to switch between desktop environments
@@ -18,6 +18,7 @@ in {
   nixpkgs.config.allowUnfreePredicate = _: true;
 
   imports = [
+    ./lib/system-specs.nix # System specifications from JSON
     ./lib/system-info.nix # System information display
     ./applications/applications.nix
     ./desktop/keyboard.nix # Import keyboard configuration

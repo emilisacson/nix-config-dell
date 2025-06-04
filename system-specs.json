@@ -1,0 +1,61 @@
+{
+  "hostname": "fedora",
+  "os_name": "Fedora Linux",
+  "os_version": "42 (Workstation Edition)",
+  "os_id": "fedora",
+  "os_version_id": "42",
+  "architecture": "x86_64",
+  "kernel": "6.14.8-300.fc42.x86_64",
+  "cpu_model": "Intel(R) Core(TM) i7-10610U CPU @ 1.80GHz",
+  "cpu_cores": 8,
+  "cpu_vendor": "GenuineIntel",
+  "gpus": [
+    {
+      "vendor": "intel",
+      "model": "CometLake-U GT2 (rev 02)",
+      "full_description": "00:02.0 VGA compatible controller: Intel Corporation CometLake-U GT2 [UHD Graphics] (rev 02)"
+    }
+  ],
+  "displays": {
+    "count": 1,
+    "monitors": [
+      {
+        "name": "eDP-1",
+        "width": 1920,
+        "height": 1080,
+        "orientation": "landscape",
+        "panel_id": "AUO-0x00000000"
+      }
+    ],
+    "primary": "eDP-1"
+  },
+  "memory_gb": 31,
+  "storage": [
+    {
+      "name": "sda",
+      "size": "57,3G",
+      "model": "Ultra Fit"
+    },
+    {
+      "name": "zram0",
+      "size": "8G",
+      "model": "zram (virtual)"
+    },
+    {
+      "name": "nvme0n1",
+      "size": "953,9G",
+      "model": "Micron 2300 NVMe 1024GB"
+    }
+  ],
+  "network_interfaces": [
+    {
+      "name": "wlo1",
+      "type": "wifi",
+      "state": "UP"
+    }
+  ],
+  "is_laptop": true,
+  "system_id": "laptop-Latitude_7410-intel",
+  "detection_timestamp": "2025-06-02T13:45:34+02:00",
+  "detection_method": "runtime_script"
+}

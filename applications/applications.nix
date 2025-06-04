@@ -1,4 +1,4 @@
-{ pkgs, systemConfig ? null, ... }:
+{ pkgs, ... }:
 
 {
   # Import specific application modules

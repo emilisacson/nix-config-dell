@@ -19,7 +19,7 @@
         "terminate:ctrl_alt_bksp"
         "lv3:ralt_switch" # Right Alt as AltGr for special characters
       ];
-      current = 1; # SVDVORAK as default
+      current = 1; # SE as default
     };
   };
 

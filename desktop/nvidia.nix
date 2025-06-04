@@ -1,12 +1,8 @@
-{ config, pkgs, lib, systemConfig ? null, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   # Check if this system has NVIDIA GPU based on detection
-  hasNvidia = if systemConfig != null && systemConfig ? currentSystem
-  && systemConfig.currentSystem ? hasNvidia then
-    systemConfig.currentSystem.hasNvidia
-  else
-    false; # Default to false if detection unavailable (for compatibility)
+  hasNvidia = config.systemSpecs.hasNvidiaGPU or false;
 in {
   # NVIDIA-specific packages and tools - only install if NVIDIA GPU detected
   home.packages = with pkgs;

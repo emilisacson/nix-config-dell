@@ -1,4 +1,4 @@
-{ pkgs, lib, nixgl ? { }, systemConfig ? null, ... }:
+{ pkgs, lib, nixgl ? { }, ... }:
 
 {
   home.packages = with pkgs; [

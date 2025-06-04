@@ -1,135 +1,66 @@
-{ config, lib, systemConfig ? null, ... }:
+{ config, lib, ... }:
 
 {
-  # Add activation script to show system type when rebuilding
+  # Add activation script to show system detection report when rebuilding
   home.activation.showSystemType = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     echo "╔═══════════════════════════════════════════════════╗"
     echo "║ 🖥️  System Detection Report"
     echo "╠═══════════════════════════════════════════════════╣"
 
-    # Show build-time detection if available
-    ${if systemConfig != null && systemConfig ? detectionMessage then ''
-      echo "║ ${systemConfig.detectionMessage}"
-    '' else ''
-      echo "║ ⚠️  No build-time detection available"
-    ''}
-
-    ${if systemConfig != null && systemConfig ? currentSystemType then ''
-      echo "║ • Build-time system: ${systemConfig.currentSystemType}"
-    '' else
-      ""}
-
-    ${if systemConfig != null && systemConfig ? currentSystem
-    && systemConfig.currentSystem ? description then ''
-      echo "║ • Configuration: ${systemConfig.currentSystem.description}"
-    '' else
-      ""}
+    # SECTION 1: Detection Method & Status
+    echo "║ 🔍 Detection Method:"
+    echo "║ • Detection script: ./extras/detect-system-specs.sh"
+    echo "║ • JSON file: ~/.nix-config/system-specs.json"
+    echo "║ • System ID: ${config.systemSpecs.system_id}"
+    echo "║ • Generated: ${config.systemSpecs.detection_timestamp}"
 
     echo "╠═══════════════════════════════════════════════════╣"
-    echo "║ 🔍 Runtime Detection:"
-
-    # Detect system information at runtime (not build time)
-    VENDOR=""
-    MODEL=""
-
-    if [ -f /sys/class/dmi/id/sys_vendor ] && [ -r /sys/class/dmi/id/sys_vendor ]; then
-      VENDOR=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null | tr -d '\n' | tr -d '\r' | sed 's/^[ \t]*//;s/[ \t]*$//')
-    fi
-
-    if [ -f /sys/class/dmi/id/product_name ] && [ -r /sys/class/dmi/id/product_name ]; then
-      MODEL=$(cat /sys/class/dmi/id/product_name 2>/dev/null | tr -d '\n' | tr -d '\r' | sed 's/^[ \t]*//;s/[ \t]*$//')
-    fi
-
-    # Check for NVIDIA GPU using multiple methods
-    HAS_NVIDIA=false
-    GPU_DETECTION_METHOD=""
-
-    # Method 1: lspci
-    if command -v lspci >/dev/null 2>&1; then
-      if lspci 2>/dev/null | grep -i nvidia >/dev/null 2>&1; then
-        HAS_NVIDIA=true
-        GPU_DETECTION_METHOD="lspci"
-      fi
-    fi
-
-    # Method 2: Check for NVIDIA driver files (if lspci failed)
-    if [[ "$HAS_NVIDIA" == "false" ]]; then
-      if [ -d /proc/driver/nvidia ] || [ -f /dev/nvidia0 ] || [ -f /dev/nvidiactl ]; then
-        HAS_NVIDIA=true
-        GPU_DETECTION_METHOD="nvidia-driver"
-      fi
-    fi
-
-    # Method 3: Check for NVIDIA in dmesg (if available)
-    if [[ "$HAS_NVIDIA" == "false" ]] && command -v dmesg >/dev/null 2>&1; then
-      if dmesg 2>/dev/null | grep -i nvidia >/dev/null 2>&1; then
-        HAS_NVIDIA=true
-        GPU_DETECTION_METHOD="dmesg"
-      fi
-    fi
-
-    # Method 4: Check PCI devices directory
-    if [[ "$HAS_NVIDIA" == "false" ]] && [ -d /sys/bus/pci/devices ]; then
-      for device in /sys/bus/pci/devices/*/vendor; do
-        if [ -r "$device" ] && [ "$(cat "$device" 2>/dev/null)" = "0x10de" ]; then
-          HAS_NVIDIA=true
-          GPU_DETECTION_METHOD="pci-vendor-id"
-          break
-        fi
-      done
-    fi
-
-    # Display runtime detection results
-    if [ -n "$VENDOR" ] && [ -n "$MODEL" ]; then
-      echo "║ • Vendor: $VENDOR"
-      echo "║ • Model: $MODEL"
-      
-      if [[ "$VENDOR" == "LENOVO" || "$VENDOR" == "Lenovo" ]]; then
-        LAPTOP_TYPE="Lenovo"
-      elif [[ "$VENDOR" == "Dell Inc." || "$VENDOR" == "DELL" ]]; then
-        LAPTOP_TYPE="Dell"
-      else
-        LAPTOP_TYPE="$VENDOR"
-      fi
-      
-      echo "║ • Laptop: $LAPTOP_TYPE $MODEL"
-    else
-      echo "║ • ⚠️  Unable to detect vendor/model at runtime"
-    fi
-
-    # Display GPU detection results
-    if [[ "$HAS_NVIDIA" == "true" ]]; then
-      echo "║ • GPU: NVIDIA + Intel (hybrid) [detected via $GPU_DETECTION_METHOD]"
-    elif command -v lspci >/dev/null 2>&1; then
-      echo "║ • GPU: Intel only [detected via lspci]"
-    elif [ -d /sys/class/drm ]; then
-      # Check DRM devices as fallback
-      INTEL_FOUND=false
-      NVIDIA_FOUND=false
-      
-      for card in /sys/class/drm/card*/device/vendor; do
-        if [ -r "$card" ]; then
-          vendor=$(cat "$card" 2>/dev/null)
-          case "$vendor" in
-            "0x8086") INTEL_FOUND=true ;;
-            "0x10de") NVIDIA_FOUND=true ;;
-          esac
-        fi
-      done
-      
-      if [[ "$NVIDIA_FOUND" == "true" ]]; then
-        echo "║ • GPU: NVIDIA + Intel (hybrid) [detected via DRM]"
-      elif [[ "$INTEL_FOUND" == "true" ]]; then
-        echo "║ • GPU: Intel only [detected via DRM]"
-      else
-        echo "║ • GPU: Unknown configuration [DRM accessible but no recognized vendors]"
-      fi
-    else
-      echo "║ • GPU: Unable to detect (limited runtime environment)"
-      echo "║   ℹ️  Build-time detection shows: ${
-        systemConfig.currentSystem.description or "Unknown"
+    # SECTION 2: System Specifications
+    echo "║ 💻 System Specifications:"
+    echo "║ • Hostname: ${config.systemSpecs.hostname}"
+    echo "║ • OS: ${config.systemSpecs.os_name} ${config.systemSpecs.os_version}"
+    echo "║ • Architecture: ${config.systemSpecs.architecture}"
+    echo "║ • Kernel: ${config.systemSpecs.kernel or "unknown"}"
+    echo "║ • CPU: ${config.systemSpecs.cpu_model}"
+    echo "║ • CPU Cores: ${toString config.systemSpecs.cpu_cores}"
+    echo "║ • Memory: ${toString config.systemSpecs.memory_gb} GB"
+    echo "║ • Laptop: ${if config.systemSpecs.is_laptop then "Yes" else "No"}"
+    echo "║"
+    echo "║ 🎮 GPU Configuration:"
+    ${let
+      gpuVendors = builtins.map (gpu: gpu.vendor) config.systemSpecs.gpus;
+      gpuModels = builtins.map (gpu: "${gpu.vendor} ${gpu.model}")
+        config.systemSpecs.gpus;
+    in if builtins.length config.systemSpecs.gpus > 0 then ''
+      echo "║ • GPUs: ${builtins.concatStringsSep ", " gpuModels}"
+      echo "║ • NVIDIA GPU: ${
+        if config.systemSpecs.hasNvidiaGPU then "✅ Yes" else "❌ No"
       }"
-    fi
+      echo "║ • Intel GPU: ${
+        if config.systemSpecs.hasIntelGPU then "✅ Yes" else "❌ No"
+      }"
+      echo "║ • AMD GPU: ${
+        if config.systemSpecs.hasAMDGPU then "✅ Yes" else "❌ No"
+      }"
+    '' else ''
+      echo "║ • GPUs: None detected"
+      echo "║ • GPU flags: All disabled (fallback mode)"
+    ''}
+
+    # SECTION 3: Monitor Configuration
+    echo "║"
+    echo "║ 📺 Monitor Configuration:"
+    echo "║ • Monitor count: ${toString config.systemSpecs.displays.count}"
+    ${if config.systemSpecs.displays.count > 0 then ''
+      echo "║ • Primary monitor: ${config.systemSpecs.displays.primary}"
+      ${builtins.concatStringsSep "\n" (builtins.map (monitor: ''
+        echo "║ • ${monitor.name}: ${toString monitor.width}×${
+          toString monitor.height
+        } (${monitor.orientation})"
+      '') config.systemSpecs.displays.monitors)}
+    '' else ''
+      echo "║ • No monitors detected in JSON file"
+    ''}
 
     echo "╚═══════════════════════════════════════════════════╝"
   '';

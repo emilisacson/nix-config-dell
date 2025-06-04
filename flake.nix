@@ -38,18 +38,11 @@
       };
 
       unstable = nixpkgs-unstable.legacyPackages.${system};
-
-      # Import system detection module - using the fixed version
-      systemDetection =
-        import ./lib/system-detection-fixed.nix { lib = nixpkgs.lib; };
     in {
       homeConfigurations.${username} =
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
-          extraSpecialArgs = {
-            inherit inputs unstable nixgl;
-            systemConfig = systemDetection;
-          };
+          extraSpecialArgs = { inherit inputs unstable nixgl; };
           modules =
             [ ./home.nix cosmic-manager.homeManagerModules.cosmic-manager ];
         };

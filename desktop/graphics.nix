@@ -1,4 +1,4 @@
-{ config, pkgs, lib, systemConfig ? null, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # General graphics and GPU utilities for all systems
@@ -13,7 +13,11 @@
 
     # X11 and graphics tools
     xorg.xhost # For managing access to the X server
+    xorg.xrandr # Display configuration utility for monitor detection
     glxinfo # OpenGL information tool
+
+    # GNOME configuration tools
+    dconf # GNOME configuration database tool
 
     # Vulkan support (works with both Intel and NVIDIA)
     vulkan-tools # Vulkan utilities (vulkaninfo, etc.)

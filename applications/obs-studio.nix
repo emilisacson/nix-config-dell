@@ -1,4 +1,4 @@
-{ pkgs, lib, nixgl ? { }, systemConfig ? null, ... }:
+{ pkgs, lib, nixgl ? { }, ... }:
 
 { # Install OBS Studio with nixGL wrapper for graphics support
   home.packages = with pkgs; [

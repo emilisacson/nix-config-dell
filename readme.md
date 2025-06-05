@@ -119,6 +119,11 @@ gtk-update-icon-cache -f ~/.local/share/icons/hicolor 2>/dev/null || true
 busctl --user call org.gnome.Shell /org/gnome/Shell org.gnome.Shell Eval s 'Meta.restart("Restarting…")'
 ```
 
+### Check Dash to Panel settings with dconf
+```bash
+dconf dump /org/gnome/shell/extensions/dash-to-panel/
+```
+
 ### Flatpak GTK theme override
 ```bash
 flatpak override --user --env=GTK_THEME=Adwaita:dark org.gnome.Evolution

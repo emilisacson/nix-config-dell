@@ -7,7 +7,7 @@
     "git.autofetch": true,
     "github.copilot.chat.codeGeneration.instructions": [
         {
-            "text": "I use Fedora 42 WE with Gnome and use Nix Flakes and Home Manager to manage my system. The followin command is used to rebuild the home manager config: cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage.",
+            "text": "I use Fedora 42 WE with Gnome and use Nix Flakes and Home Manager to manage my system. The followin command is used to rebuild the home manager config: cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage. You have a bug where you sometimes can not see terminal output, therefor you should always follow commands that you want the output from with this: > debug_output.txt 2>&1.",
         }
     ]
 }

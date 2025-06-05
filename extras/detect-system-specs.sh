@@ -62,16 +62,16 @@ extract_panel_id() {
             --method org.gnome.Mutter.DisplayConfig.GetCurrentState 2>/dev/null || true)
         
         if [ -n "$DISPLAY_CONFIG" ]; then
-            # Extract monitor info in format: ('eDP-1', 'AUO', '0x633d', '0x00000000')
-            # We want field 2 (vendor) + field 4 (the 0x000... ID)
+            # Extract monitor info in format: ('DP-5', 'AOC', 'U28P2G6B', 'PCSN4JA000069')
+            # We want field 1 (manufacturer) + field 3 (serial)
             MONITOR_DATA=$(echo "$DISPLAY_CONFIG" | grep -o "('$monitor_name'[^)]*)" | head -1 || echo "")
             if [ -n "$MONITOR_DATA" ]; then
-                # Extract the vendor (2nd field) and the 0x000... (4th field)
+                # Extract the manufacturer (field 1) and serial (field 3)
                 VENDOR=$(echo "$MONITOR_DATA" | sed "s/.*'$monitor_name', '\([^']*\)'.*/\1/" || echo "")
-                PRODUCT_ID=$(echo "$MONITOR_DATA" | sed "s/.*'$monitor_name'[^']*'[^']*'[^']*'\([^']*\)'.*/\1/" || echo "")
+                SERIAL=$(echo "$MONITOR_DATA" | sed "s/.*'$monitor_name', '[^']*', '[^']*', '\([^']*\)'.*/\1/" || echo "")
                 
-                if [ -n "$VENDOR" ] && [ -n "$PRODUCT_ID" ] && [ "$PRODUCT_ID" != "$MONITOR_DATA" ]; then
-                    panel_id="$VENDOR-$PRODUCT_ID"
+                if [ -n "$VENDOR" ] && [ -n "$SERIAL" ] && [ "$SERIAL" != "$MONITOR_DATA" ]; then
+                    panel_id="$VENDOR-$SERIAL"
                     echo "$panel_id"
                     return
                 fi
@@ -269,194 +269,409 @@ fi
 
 add_to_json "gpus" "$GPU_INFO" "array"
 
+# Function to get monitor rotation from GNOME monitors.xml
+# Note: GNOME uses different rotation conventions in XML vs GUI:
+# - monitors.xml "left" = 90° counterclockwise = GUI "Portrait Right"
+# - monitors.xml "right" = 90° clockwise = GUI "Portrait Left"
+# - monitors.xml "inverted" = 180° = GUI "Landscape (flipped)"
+# This function returns the XML convention for consistency with the config file
+get_monitor_rotation() {
+    local monitor_name="$1"
+    local monitors_xml="$HOME/.config/monitors.xml"
+    local rotation="normal"
+    
+    if [ -f "$monitors_xml" ] && command -v xmlstarlet >/dev/null 2>&1; then
+        # Use xmlstarlet if available for robust XML parsing
+        rotation=$(xmlstarlet sel -t -m "//logicalmonitor[monitor/monitorspec/connector='$monitor_name']/transform/rotation" -v . "$monitors_xml" 2>/dev/null || echo "normal")
+    elif [ -f "$monitors_xml" ]; then
+        # Simple approach: find the line number of our connector, then search backwards for the nearest rotation
+        local connector_line=$(grep -n "<connector>$monitor_name</connector>" "$monitors_xml" | head -1 | cut -d: -f1)
+        
+        if [ -n "$connector_line" ]; then
+            # Look backwards from the connector line to find the nearest logicalmonitor start
+            local logicalmonitor_start=$(awk -v connector_line="$connector_line" 'NR <= connector_line && /<logicalmonitor>/ {start=NR} END {print start}' "$monitors_xml")
+            
+            if [ -n "$logicalmonitor_start" ]; then
+                # Look for rotation between the logicalmonitor start and connector line
+                local rotation_line=$(sed -n "${logicalmonitor_start},${connector_line}p" "$monitors_xml" | grep -n "<rotation>" | head -1 | cut -d: -f1)
+                
+                if [ -n "$rotation_line" ]; then
+                    # Calculate actual line number and extract rotation
+                    local actual_rotation_line=$((logicalmonitor_start + rotation_line - 1))
+                    rotation=$(sed -n "${actual_rotation_line}p" "$monitors_xml" | sed 's/.*<rotation>\([^<]*\)<\/rotation>.*/\1/' | tr -d ' \t\n\r')
+                fi
+            fi
+        fi
+    fi
+    
+    echo "$rotation"
+}
+
+# Function to determine actual orientation based on resolution and rotation
+get_actual_orientation() {
+    local width="$1"
+    local height="$2"
+    local rotation="$3"
+    
+    local base_orientation
+    if [ "$width" -gt "$height" ]; then
+        base_orientation="landscape"
+    elif [ "$height" -gt "$width" ]; then
+        base_orientation="portrait"
+    else
+        base_orientation="square"
+    fi
+    
+    # Apply rotation transformation
+    case "$rotation" in
+        "left"|"right")
+            # 90-degree rotations flip the orientation
+            if [ "$base_orientation" = "landscape" ]; then
+                echo "portrait"
+            elif [ "$base_orientation" = "portrait" ]; then
+                echo "landscape"
+            else
+                echo "square"
+            fi
+            ;;
+        "inverted"|"normal"|"")
+            # 0 or 180-degree rotations keep the same logical orientation
+            echo "$base_orientation"
+            ;;
+        *)
+            # Unknown rotation, fall back to base orientation
+            echo "$base_orientation"
+            ;;
+    esac
+}
+
+# Function to get monitor refresh rate (Hz) - improved method using proper gdbus parsing
+get_monitor_refresh_rate() {
+    local monitor_name="$1"
+    local refresh_rate=60  # Default fallback
+    
+    # Method 1: Try gdbus to get GNOME display config (most reliable) - using Python parser
+    if command -v gdbus >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+        DISPLAY_CONFIG=$(gdbus call --session --dest org.gnome.Mutter.DisplayConfig \
+            --object-path /org/gnome/Mutter/DisplayConfig \
+            --method org.gnome.Mutter.DisplayConfig.GetCurrentState 2>/dev/null || true)
+        
+        if [ -n "$DISPLAY_CONFIG" ]; then
+            # Use Python to properly parse the complex gdbus structure
+            TEMP_PYTHON=$(mktemp --suffix=.py)
+            cat > "$TEMP_PYTHON" << 'EOF'
+import sys
+import re
+
+def extract_current_refresh_rate(gdbus_output, target_connector):
+    """Extract current refresh rate for a specific monitor connector."""
+    
+    # Remove outer parentheses and uint32 prefix
+    cleaned = gdbus_output.strip()
+    if cleaned.startswith('(uint32'):
+        # Find the first comma after uint32
+        first_comma = cleaned.find(',', 6)
+        if first_comma != -1:
+            cleaned = cleaned[first_comma+1:].strip()
+            if cleaned.endswith(')'):
+                cleaned = cleaned[:-1].strip()
+    
+    # Find the three main sections by counting brackets/braces
+    bracket_count = 0
+    brace_count = 0
+    sections = []
+    current_section = ""
+    section_type = None
+    
+    i = 0
+    while i < len(cleaned):
+        char = cleaned[i]
+        
+        if char == '[' and bracket_count == 0 and brace_count == 0:
+            if current_section.strip():
+                sections.append((section_type, current_section.strip()))
+            current_section = ""
+            section_type = 'array'
+            bracket_count = 1
+        elif char == '[':
+            bracket_count += 1
+            current_section += char
+        elif char == ']':
+            bracket_count -= 1
+            if bracket_count == 0 and section_type == 'array':
+                sections.append((section_type, current_section.strip()))
+                current_section = ""
+                section_type = None
+            else:
+                current_section += char
+        elif char == '{' and bracket_count == 0 and brace_count == 0:
+            if current_section.strip():
+                sections.append((section_type, current_section.strip()))
+            current_section = ""
+            section_type = 'object'
+            brace_count = 1
+        elif char == '{':
+            brace_count += 1
+            current_section += char
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0 and section_type == 'object':
+                sections.append((section_type, current_section.strip()))
+                current_section = ""
+                section_type = None
+            else:
+                current_section += char
+        elif bracket_count > 0 or brace_count > 0:
+            current_section += char
+        elif char in ', \n\t':
+            # Skip whitespace and commas between sections
+            pass
+        else:
+            current_section += char
+        
+        i += 1
+    
+    # Handle any remaining section
+    if current_section.strip():
+        sections.append((section_type, current_section.strip()))
+    
+    # Get monitors section (first array)
+    if len(sections) < 1:
+        return "60"
+    
+    monitors_section = sections[0][1]
+    
+    # Split monitors by "), ((" pattern
+    monitor_entries = re.split(r'\), \(\(', monitors_section)
+    
+    for entry in monitor_entries:
+        # Clean up the entry
+        entry = entry.strip()
+        if entry.startswith('(('):
+            entry = entry[2:]
+        if entry.endswith('))'):
+            entry = entry[:-2]
+        elif entry.endswith(')'):
+            entry = entry[:-1]
+        
+        # Check if this entry is for our target connector
+        if f"'{target_connector}'" not in entry:
+            continue
+        
+        # Parse monitor entry: (('connector', 'vendor', 'model', 'serial'), [MODES], {PROPERTIES})
+        # Find the modes section (between "), [" and "], {")
+        modes_match = re.search(r'\), \[(.*)\], \{', entry)
+        if not modes_match:
+            continue
+        
+        modes_section = modes_match.group(1)
+        
+        # Find current mode by looking for 'is-current': <true>
+        # Mode format: ('mode_id', width, height, refresh_rate, scale, [scales], {properties})
+        mode_pattern = r"'([^']*)', (\d+), (\d+), ([0-9.e+-]+), ([0-9.]+), \[[^\]]*\], \{[^}]*'is-current': <true>[^}]*\}"
+        current_mode_match = re.search(mode_pattern, modes_section)
+        
+        if current_mode_match:
+            refresh_rate = current_mode_match.group(4)
+            try:
+                # Convert to float and round to nearest integer
+                rate_float = float(refresh_rate)
+                return str(round(rate_float))
+            except ValueError:
+                continue
+    
+    return "60"
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("60")
+        sys.exit(0)
+    
+    gdbus_output = sys.argv[1]
+    target_connector = sys.argv[2]
+    
+    result = extract_current_refresh_rate(gdbus_output, target_connector)
+    print(result)
+EOF
+            
+            # Call Python script to parse refresh rate
+            PARSED_RATE=$(python3 "$TEMP_PYTHON" "$DISPLAY_CONFIG" "$monitor_name" 2>/dev/null || echo "60")
+            if [ -n "$PARSED_RATE" ] && [ "$PARSED_RATE" != "60" ]; then
+                refresh_rate="$PARSED_RATE"
+            fi
+            
+            rm -f "$TEMP_PYTHON"
+        fi
+    fi
+    
+    # Method 2: Try xrandr if gdbus method failed
+    if [ "$refresh_rate" = "60" ] && command -v xrandr >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
+        XRANDR_OUTPUT=$(xrandr 2>/dev/null | grep "^$monitor_name " || true)
+        if [ -n "$XRANDR_OUTPUT" ]; then
+            # Look for current mode (marked with *)
+            CURRENT_RATE=$(echo "$XRANDR_OUTPUT" | grep -o '[0-9][0-9]*\.[0-9][0-9]*\*' | sed 's/\*//' | head -1)
+            if [ -n "$CURRENT_RATE" ]; then
+                refresh_rate=$(printf "%.0f" "$CURRENT_RATE")
+            fi
+        fi
+    fi
+    
+    # Method 3: Try DRM mode information as last resort
+    if [ "$refresh_rate" = "60" ]; then
+        for card in /sys/class/drm/card*-$monitor_name; do
+            if [ -d "$card" ]; then
+                modes_file="$card/modes"
+                if [ -f "$modes_file" ]; then
+                    # Get the first (preferred) mode and extract refresh rate
+                    PREFERRED_MODE=$(head -1 "$modes_file" 2>/dev/null || echo "")
+                    if [ -n "$PREFERRED_MODE" ] && echo "$PREFERRED_MODE" | grep -q "@"; then
+                        MODE_RATE=$(echo "$PREFERRED_MODE" | sed 's/.*@\([0-9]*\).*/\1/')
+                        if [ -n "$MODE_RATE" ] && [ "$MODE_RATE" -gt 0 ] && [ "$MODE_RATE" -lt 1000 ]; then
+                            refresh_rate="$MODE_RATE"
+                        fi
+                    fi
+                fi
+                break
+            fi
+        done
+    fi
+    
+    # Ensure we have a reasonable value (allow lower values like 30Hz for some displays)
+    if [ "$refresh_rate" -lt 20 ] || [ "$refresh_rate" -gt 500 ]; then
+        refresh_rate=60
+    fi
+    
+    echo "$refresh_rate"
+}
+
 # 4. MONITOR/DISPLAY INFORMATION  
 echo "   🖥️  Detecting monitor information..."
 
 MONITOR_INFO="{\"count\": 0, \"monitors\": [], \"primary\": \"unknown\"}"
 
-# Method 1: Try xrandr if available and DISPLAY is set
-if command -v xrandr >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
-    echo "     Using xrandr detection..."
-    XRANDR_OUTPUT=$(xrandr --query 2>/dev/null || true)
-    if [ -n "$XRANDR_OUTPUT" ]; then
-        CONNECTED_MONITORS=$(echo "$XRANDR_OUTPUT" | grep " connected" || true)
-        if [ -n "$CONNECTED_MONITORS" ]; then
-            MONITOR_ARRAY="[]"
-            MONITOR_COUNT=0
-            PRIMARY_MONITOR="unknown"
-            
-            while IFS= read -r line; do
-                if [ -n "$line" ]; then
-                    MONITOR_NAME=$(echo "$line" | awk '{print $1}')
+# Detect monitors using DRM (Direct Rendering Manager)
+if [ -d "/sys/class/drm" ]; then
+    MONITOR_ARRAY="[]"
+    MONITOR_COUNT=0
+    PRIMARY_MONITOR="unknown"
+    
+    for card in /sys/class/drm/card*-*; do
+        if [ -d "$card" ]; then
+            status_file="$card/status"
+            if [ -f "$status_file" ]; then
+                status=$(cat "$status_file" 2>/dev/null || echo "unknown")
+                if [ "$status" = "connected" ]; then
+                    MONITOR_NAME=$(basename "$card" | sed 's/^card[0-9]*-//')
                     MONITOR_COUNT=$((MONITOR_COUNT + 1))
                     
-                    # Check if primary
-                    if echo "$line" | grep -q "primary"; then
+                    # Set first connected monitor as primary
+                    if [ "$PRIMARY_MONITOR" = "unknown" ]; then
                         PRIMARY_MONITOR="$MONITOR_NAME"
                     fi
                     
-                    # Extract resolution and determine orientation
-                    RESOLUTION=$(echo "$line" | grep -o '[0-9]\+x[0-9]\+' | head -1 || echo "unknown")
-                    WIDTH=$(echo "$RESOLUTION" | cut -d'x' -f1 2>/dev/null || echo "0")
-                    HEIGHT=$(echo "$RESOLUTION" | cut -d'x' -f2 2>/dev/null || echo "0")
+                    # Try to get actual resolution from DRM
+                    WIDTH=1920
+                    HEIGHT=1080
+                    ORIENTATION="landscape"
                     
-                    ORIENTATION="unknown"
+                    # Method 1: Try to get mode information from DRM
+                    modes_file="$card/modes"
+                    if [ -f "$modes_file" ]; then
+                        # Get the first (preferred) mode
+                        PREFERRED_MODE=$(head -1 "$modes_file" 2>/dev/null || echo "")
+                        if [ -n "$PREFERRED_MODE" ] && echo "$PREFERRED_MODE" | grep -q "x"; then
+                            WIDTH=$(echo "$PREFERRED_MODE" | cut -d'x' -f1)
+                            HEIGHT=$(echo "$PREFERRED_MODE" | cut -d'x' -f2 | cut -d'i' -f1 | cut -d'p' -f1)
+                        fi
+                    fi
+                    
+                    # Method 2: Try to get resolution from EDID detailed timing
+                    edid_file="$card/edid"
+                    if [ -f "$edid_file" ] && [ -s "$edid_file" ] && command -v hexdump >/dev/null 2>&1; then
+                        # EDID detailed timing descriptor starts at byte 54 (0x36)
+                        # Horizontal active is at bytes 56-57 (little endian)
+                        # Vertical active is at bytes 59-60 (little endian)
+                        EDID_HEX=$(hexdump -C "$edid_file" 2>/dev/null | head -10)
+                        if [ -n "$EDID_HEX" ]; then
+                            # Extract horizontal resolution (bytes 58-59, with upper nibble of 62)
+                            H_LOW=$(echo "$EDID_HEX" | sed -n '4p' | awk '{print "0x" $7}' 2>/dev/null)
+                            H_HIGH=$(echo "$EDID_HEX" | sed -n '4p' | awk '{print "0x" $8}' 2>/dev/null)
+                            V_LOW=$(echo "$EDID_HEX" | sed -n '4p' | awk '{print "0x" $10}' 2>/dev/null)
+                            V_HIGH=$(echo "$EDID_HEX" | sed -n '4p' | awk '{print "0x" $11}' 2>/dev/null)
+                            
+                            if [ -n "$H_LOW" ] && [ -n "$H_HIGH" ] && [ -n "$V_LOW" ] && [ -n "$V_HIGH" ]; then
+                                # Calculate resolution (simplified EDID parsing)
+                                H_RES=$(( (($H_HIGH & 0xF0) << 4) + $H_LOW ))
+                                V_RES=$(( (($V_HIGH & 0xF0) << 4) + $V_LOW ))
+                                
+                                if [ "$H_RES" -gt 640 ] && [ "$H_RES" -lt 8192 ] && [ "$V_RES" -gt 480 ] && [ "$V_RES" -lt 8192 ]; then
+                                    WIDTH=$H_RES
+                                    HEIGHT=$V_RES
+                                fi
+                            fi
+                        fi
+                    fi
+                    
+                    # Method 3: Fallback based on monitor type
+                    if [ "$WIDTH" = "1920" ] && [ "$HEIGHT" = "1080" ]; then
+                        case "$MONITOR_NAME" in
+                            eDP-1|LVDS-1|DSI-1)
+                                # Laptop displays - common resolutions
+                                WIDTH=1920
+                                HEIGHT=1080
+                                ;;
+                            DP-*|HDMI-*)
+                                # External displays - assume common resolution
+                                WIDTH=1920
+                                HEIGHT=1080
+                                ;;
+                        esac
+                    fi
+                    
+                    # Get rotation from GNOME monitors.xml
+                    ROTATION=$(get_monitor_rotation "$MONITOR_NAME")
+                    
+                    # Determine actual orientation based on resolution and rotation
+                    ACTUAL_ORIENTATION=$(get_actual_orientation "$WIDTH" "$HEIGHT" "$ROTATION")
+                    
+                    # Keep original orientation logic for compatibility
                     if [ "$WIDTH" -gt "$HEIGHT" ]; then
                         ORIENTATION="landscape"
                     elif [ "$HEIGHT" -gt "$WIDTH" ]; then
                         ORIENTATION="portrait"
+                    else
+                        ORIENTATION="square"
                     fi
                     
-                    # Extract panel ID from EDID information
-                    PANEL_ID="$MONITOR_NAME"
+                    # Extract panel ID using comprehensive approach
+                    PANEL_ID=$(extract_panel_id "$MONITOR_NAME")
                     
-                    # Method 1: Try to get panel ID from DRM EDID
-                    DRM_CARD_PATH="/sys/class/drm/card*-$MONITOR_NAME/edid"
-                    for edid_path in $DRM_CARD_PATH; do
-                        if [ -f "$edid_path" ]; then
-                            # Read EDID binary data and extract vendor/product
-                            if command -v hexdump >/dev/null 2>&1; then
-                                EDID_HEX=$(hexdump -C "$edid_path" 2>/dev/null | head -10 || true)
-                                if [ -n "$EDID_HEX" ]; then
-                                    # EDID vendor ID is at bytes 8-9, product ID at bytes 10-11
-                                    VENDOR_BYTES=$(echo "$EDID_HEX" | sed -n '1p' | awk '{print $3 $4}' || echo "")
-                                    PRODUCT_BYTES=$(echo "$EDID_HEX" | sed -n '1p' | awk '{print $5 $6}' || echo "")
-                                    
-                                    if [ -n "$VENDOR_BYTES" ] && [ -n "$PRODUCT_BYTES" ]; then
-                                        # Convert vendor bytes to 3-letter code
-                                        VENDOR_CODE=$(printf "%s" "$VENDOR_BYTES" | \
-                                            sed 's/\(..\)\(..\)/\2\1/' | \
-                                            xxd -r -p 2>/dev/null | \
-                                            od -An -tx2 2>/dev/null | \
-                                            awk '{printf "%c%c%c", (($1/1024)%32)+64, (($1/32)%32)+64, ($1%32)+64}' 2>/dev/null || echo "")
-                                        
-                                        # Format product as hex
-                                        PRODUCT_HEX=$(printf "0x%s" "$PRODUCT_BYTES" | sed 's/\(..\)\(..\)/0x\2\1/' || echo "0x00000000")
-                                        
-                                        if [ -n "$VENDOR_CODE" ] && [ "$VENDOR_CODE" != "" ]; then
-                                            PANEL_ID="$VENDOR_CODE-$PRODUCT_HEX"
-                                        fi
-                                    fi
-                                fi
-                            fi
-                            break
-                        fi
-                    done
-                    
-                    # Method 2: Fallback to xrandr --verbose for EDID info
-                    if [ "$PANEL_ID" = "$MONITOR_NAME" ] && command -v xrandr >/dev/null 2>&1; then
-                        XRANDR_VERBOSE=$(xrandr --verbose | grep -A 50 "^$MONITOR_NAME " 2>/dev/null || true)
-                        if [ -n "$XRANDR_VERBOSE" ]; then
-                            # Look for manufacturer and product in verbose output
-                            MANUFACTURER=$(echo "$XRANDR_VERBOSE" | grep -i "manufacturer" | head -1 | awk '{print $2}' || echo "")
-                            PRODUCT=$(echo "$XRANDR_VERBOSE" | grep -i "product" | head -1 | awk '{print $2}' || echo "")
-                            
-                            if [ -n "$MANUFACTURER" ] && [ -n "$PRODUCT" ]; then
-                                PANEL_ID="$MANUFACTURER-$PRODUCT"
-                            fi
-                        fi
-                    fi
-                    
-                    # Method 3: Try gdbus as final fallback
-                    if [ "$PANEL_ID" = "$MONITOR_NAME" ] && command -v gdbus >/dev/null 2>&1 && [ -n "${DISPLAY:-}" ]; then
-                        DISPLAY_CONFIG=$(gdbus call --session --dest org.gnome.Mutter.DisplayConfig \
-                            --object-path /org/gnome/Mutter/DisplayConfig \
-                            --method org.gnome.Mutter.DisplayConfig.GetCurrentState 2>/dev/null || true)
-                        
-                        if [ -n "$DISPLAY_CONFIG" ]; then
-                            # Extract monitor info in format: ('eDP-1', 'AUO', '0x633d', '0x00000000')
-                            # We want field 2 (vendor) + field 4 (the 0x000... ID)
-                            MONITOR_DATA=$(echo "$DISPLAY_CONFIG" | grep -o "('$MONITOR_NAME'[^)]*)" | head -1 || echo "")
-                            if [ -n "$MONITOR_DATA" ]; then
-                                # Extract the vendor (2nd field) and the 0x000... (4th field)
-                                VENDOR=$(echo "$MONITOR_DATA" | sed "s/.*'$MONITOR_NAME', '\([^']*\)'.*/\1/" || echo "")
-                                PRODUCT_ID=$(echo "$MONITOR_DATA" | sed "s/.*'$MONITOR_NAME', '[^']*', '[^']*', '\([^']*\)'.*/\1/" || echo "")
-                                
-                                if [ -n "$VENDOR" ] && [ -n "$PRODUCT_ID" ] && [ "$PRODUCT_ID" != "$MONITOR_DATA" ]; then
-                                    PANEL_ID="$VENDOR-$PRODUCT_ID"
-                                fi
-                            fi
-                        fi
-                    fi
+                    # Get refresh rate using comprehensive method
+                    REFRESH_RATE=$(get_monitor_refresh_rate "$MONITOR_NAME")
                     
                     MONITOR_OBJ=$(jq -n \
                         --arg name "$MONITOR_NAME" \
-                        --arg width "$WIDTH" \
-                        --arg height "$HEIGHT" \
+                        --argjson width "$WIDTH" \
+                        --argjson height "$HEIGHT" \
                         --arg orientation "$ORIENTATION" \
                         --arg panel_id "$PANEL_ID" \
-                        '{name: $name, width: ($width | tonumber), height: ($height | tonumber), orientation: $orientation, panel_id: $panel_id}')
+                        --arg rotation "$ROTATION" \
+                        --arg actual_orientation "$ACTUAL_ORIENTATION" \
+                        --argjson refresh_rate "$REFRESH_RATE" \
+                        '{name: $name, width: $width, height: $height, orientation: $orientation, panel_id: $panel_id, rotation: $rotation, actual_orientation: $actual_orientation, refresh_rate: $refresh_rate}')
                     
                     MONITOR_ARRAY=$(echo "$MONITOR_ARRAY" | jq --argjson monitor "$MONITOR_OBJ" '. + [$monitor]')
                 fi
-            done <<< "$CONNECTED_MONITORS"
-            
-            if [ "$PRIMARY_MONITOR" = "unknown" ] && [ "$MONITOR_COUNT" -gt 0 ]; then
-                PRIMARY_MONITOR=$(echo "$MONITOR_ARRAY" | jq -r '.[0].name')
             fi
-            
-            MONITOR_INFO=$(jq -n \
-                --argjson count "$MONITOR_COUNT" \
-                --argjson monitors "$MONITOR_ARRAY" \
-                --arg primary "$PRIMARY_MONITOR" \
-                '{count: $count, monitors: $monitors, primary: $primary}')
         fi
-    fi
-fi
-
-# Method 2: Fallback to DRM if xrandr failed
-if [ "$(echo "$MONITOR_INFO" | jq '.count')" = "0" ]; then
-    echo "     Using DRM fallback detection..."
-    if [ -d "/sys/class/drm" ]; then
-        MONITOR_ARRAY="[]"
-        MONITOR_COUNT=0
-        PRIMARY_MONITOR="unknown"
-        
-        for card in /sys/class/drm/card*-*; do
-            if [ -d "$card" ]; then
-                status_file="$card/status"
-                if [ -f "$status_file" ]; then
-                    status=$(cat "$status_file" 2>/dev/null || echo "unknown")
-                    if [ "$status" = "connected" ]; then
-                        MONITOR_NAME=$(basename "$card" | sed 's/^card[0-9]*-//')
-                        MONITOR_COUNT=$((MONITOR_COUNT + 1))
-                        
-                        if [ "$PRIMARY_MONITOR" = "unknown" ]; then
-                            PRIMARY_MONITOR="$MONITOR_NAME"
-                        fi
-                        
-                        # For DRM, we can't easily get resolution, so use reasonable defaults
-                        # Most laptop screens are 1920x1080 landscape
-                        WIDTH=1920
-                        HEIGHT=1080
-                        ORIENTATION="landscape"
-                             # Extract panel ID using comprehensive approach
-                    PANEL_ID="$MONITOR_NAME"
-                    
-                    # Try multiple methods to get real panel ID
-                    PANEL_ID=$(extract_panel_id "$MONITOR_NAME")
-                        
-                        MONITOR_OBJ=$(jq -n \
-                            --arg name "$MONITOR_NAME" \
-                            --argjson width "$WIDTH" \
-                            --argjson height "$HEIGHT" \
-                            --arg orientation "$ORIENTATION" \
-                            --arg panel_id "$PANEL_ID" \
-                            '{name: $name, width: $width, height: $height, orientation: $orientation, panel_id: $panel_id}')
-                        
-                        MONITOR_ARRAY=$(echo "$MONITOR_ARRAY" | jq --argjson monitor "$MONITOR_OBJ" '. + [$monitor]')
-                    fi
-                fi
-            fi
-        done
-        
-        if [ "$MONITOR_COUNT" -gt 0 ]; then
-            MONITOR_INFO=$(jq -n \
-                --argjson count "$MONITOR_COUNT" \
-                --argjson monitors "$MONITOR_ARRAY" \
-                --arg primary "$PRIMARY_MONITOR" \
-                '{count: $count, monitors: $monitors, primary: $primary}')
-        fi
+    done
+    
+    if [ "$MONITOR_COUNT" -gt 0 ]; then
+        MONITOR_INFO=$(jq -n \
+            --argjson count "$MONITOR_COUNT" \
+            --argjson monitors "$MONITOR_ARRAY" \
+            --arg primary "$PRIMARY_MONITOR" \
+            '{count: $count, monitors: $monitors, primary: $primary}')
     fi
 fi
 

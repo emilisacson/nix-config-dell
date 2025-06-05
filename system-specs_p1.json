@@ -1,0 +1,89 @@
+{
+  "hostname": "fedora",
+  "os_name": "Fedora Linux",
+  "os_version": "42 (Workstation Edition)",
+  "os_id": "fedora",
+  "os_version_id": "42",
+  "architecture": "x86_64",
+  "kernel": "6.14.6-300.fc42.x86_64",
+  "cpu_model": "11th Gen Intel(R) Core(TM) i7-11850H @ 2.50GHz",
+  "cpu_cores": 8,
+  "cpu_vendor": "GenuineIntel",
+  "gpus": [
+    {
+      "vendor": "intel",
+      "model": "TigerLake-H GT1 (rev 01)",
+      "full_description": "00:02.0 VGA compatible controller: Intel Corporation TigerLake-H GT1 [UHD Graphics] (rev 01)"
+    },
+    {
+      "vendor": "nvidia",
+      "model": "GA104M (rev a1)",
+      "full_description": "01:00.0 VGA compatible controller: NVIDIA Corporation GA104M [GeForce RTX 3070 Mobile / Max-Q] (rev a1)"
+    }
+  ],
+  "displays": {
+    "count": 3,
+    "monitors": [
+      {
+        "name": "DP-5",
+        "width": 3840,
+        "height": 2160,
+        "orientation": "landscape",
+        "panel_id": "AOC-PCSN4JA000069",
+        "rotation": "left",
+        "actual_orientation": "portrait",
+        "refresh_rate": 30
+      },
+      {
+        "name": "DP-7",
+        "width": 3840,
+        "height": 2160,
+        "orientation": "landscape",
+        "panel_id": "AOC-PCSN4JA000072",
+        "rotation": "normal",
+        "actual_orientation": "landscape",
+        "refresh_rate": 60
+      },
+      {
+        "name": "eDP-1",
+        "width": 3840,
+        "height": 2400,
+        "orientation": "landscape",
+        "panel_id": "LGD-0x00000000",
+        "rotation": "normal",
+        "actual_orientation": "landscape",
+        "refresh_rate": 60
+      }
+    ],
+    "primary": "DP-5"
+  },
+  "memory_gb": 62,
+  "storage": [
+    {
+      "name": "zram0",
+      "size": "8G",
+      "model": "zram (virtual)"
+    },
+    {
+      "name": "nvme0n1",
+      "size": "3,6T",
+      "model": "WD_BLACK SN850X 4000GB"
+    }
+  ],
+  "network_interfaces": [
+    {
+      "name": "enp73s0",
+      "type": "ethernet",
+      "state": "DOWN"
+    },
+    {
+      "name": "wlp9s0",
+      "type": "wifi",
+      "state": "UP"
+    }
+  ],
+  "is_laptop": true,
+  "system_id": "laptop-20Y30016MX-hybrid",
+  "detection_timestamp": "2025-06-05T08:57:36+02:00",
+  "detection_method": "runtime_script"
+}

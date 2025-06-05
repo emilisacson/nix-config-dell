@@ -1,21 +1,23 @@
 { config, lib, ... }:
 
 let
-  # Get system specs from the config
+  # Pure orientation-based dash-to-panel configuration
   systemSpecs = config.systemSpecs;
 
   # Generate dash-to-panel configuration from detected system specs
   allMonitors = systemSpecs.displays.monitors or [ ];
   primaryMonitor = systemSpecs.displays.primary or "unknown";
 
-  # Generate panel configuration
+  # Generate panel configuration based purely on monitor orientation
   generateDashToPanelConfig = let
     # For each monitor, determine the panel position based on orientation
     monitorConfigs = builtins.map (monitor: {
       panel_id = monitor.panel_id;
-      position = if monitor.orientation == "portrait" then "TOP" else "RIGHT";
-      size = 48;
-      length = 100;
+      # Pure orientation-based logic: portrait = TOP, landscape = RIGHT
+      position =
+        if monitor.actual_orientation == "portrait" then "TOP" else "RIGHT";
+      size = 48; # Standard panel size
+      length = -1;
       anchor = "MIDDLE";
     }) allMonitors;
 
@@ -70,6 +72,7 @@ in {
       hotkeys-overlay-combo = "TEMPORARILY";
       intellihide = false;
       isolate-workspaces = true;
+
       show-favorites = true;
       show-running-apps = true;
       show-window-previews = true;
@@ -81,8 +84,9 @@ in {
       tray-size = 16;
       window-preview-title-position = "TOP";
 
-      # Monitor-specific settings from detection
-      isolate-monitors = if systemSpecs.displays.count > 1 then true else false;
+      # Monitor-specific settings based on detected monitors
+      isolate-monitors = systemSpecs.displays.count
+        > 1; # Enable workspace isolation for multi-monitor setups
       multi-monitors = systemSpecs.displays.count > 1;
       primary-monitor = if primaryMonitor != "unknown" then 0 else -1;
 
@@ -152,43 +156,42 @@ in {
         }) systemSpecs.displays.monitors));
 
       panel-element-positions-monitors-sync = false;
-      prefs-opened = true;
-    } else {
-      # Fallback settings when no monitors are detected
-      animate-appicon-hover-animation-extent =
-        ''{"RIPPLE": 4, "PLANK": 4, "SIMPLE": 1}'';
-      appicon-margin = 8;
-      appicon-padding = 4;
-      dot-position = "LEFT";
-      dot-style-focused = "METRO";
-      dot-style-unfocused = "DOTS";
-      extension-version = 68;
-      group-apps = true;
-      hotkeys-overlay-combo = "TEMPORARILY";
-      intellihide = false;
-      isolate-workspaces = true;
-      show-favorites = true;
-      show-running-apps = true;
-      show-window-previews = true;
-      stockgs-keep-top-panel = false;
-      stockgs-panelbtn-click-only = false;
-      trans-panel-opacity = 0.8;
-      trans-use-custom-opacity = true;
-      trans-use-dynamic-opacity = true;
-      tray-size = 16;
-      window-preview-title-position = "TOP";
+      prefs-opened = false;
+    } else
+      {
+        # Fallback settings when no monitors are detected
+        # animate-appicon-hover-animation-extent = ''{"RIPPLE": 4, "PLANK": 4, "SIMPLE": 1}'';
+        # appicon-margin = 8;
+        # appicon-padding = 4;
+        # dot-position = "LEFT";
+        # dot-style-focused = "METRO";
+        # dot-style-unfocused = "DOTS";
+        # extension-version = 68;
+        # group-apps = true;
+        # hotkeys-overlay-combo = "TEMPORARILY";
+        # intellihide = false;
+        # isolate-workspaces = true;
+        # show-favorites = true;
+        # show-running-apps = true;
+        # show-window-previews = true;
+        # stockgs-keep-top-panel = false;
+        # stockgs-panelbtn-click-only = false;
+        # trans-panel-opacity = 0.8;
+        # trans-use-custom-opacity = true;
+        # trans-use-dynamic-opacity = true;
+        # tray-size = 16;
+        # window-preview-title-position = "TOP";
 
-      isolate-monitors = false;
-      multi-monitors = false;
-      primary-monitor = 0;
-      panel-positions = ''{"fallback-monitor":"RIGHT"}'';
-      panel-sizes = ''{"fallback-monitor":48}'';
-      panel-lengths = ''{"fallback-monitor":100}'';
-      panel-anchors = ''{"fallback-monitor":"MIDDLE"}'';
-      panel-element-positions = ''
-        {"fallback-monitor":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":true,"position":"centerMonitor"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'';
-      panel-element-positions-monitors-sync = false;
-      prefs-opened = true;
-    }; # End of dash-to-panel dconf settings
+        # isolate-monitors = false;
+        # multi-monitors = false;
+        # primary-monitor = 0;
+        # panel-positions = ''{"fallback-monitor":"RIGHT"}'';
+        # panel-sizes = ''{"fallback-monitor":48}'';
+        # panel-lengths = ''{"fallback-monitor":100}'';
+        # panel-anchors = ''{"fallback-monitor":"MIDDLE"}'';
+        # panel-element-positions = ''{"fallback-monitor":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centerMonitor"},{"element":"centerBox","visible":true,"position":"centerMonitor"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":true,"position":"stackedBR"}]}'';
+        # panel-element-positions-monitors-sync = false;
+        # prefs-opened = false;
+      }; # End of dash-to-panel dconf settings
   }; # End of dconf.settings
 } # End of module

@@ -56,7 +56,7 @@
       ${builtins.concatStringsSep "\n" (builtins.map (monitor: ''
         echo "║ • ${monitor.name}: ${toString monitor.width}×${
           toString monitor.height
-        } (${monitor.orientation})"
+        } (${monitor.actual_orientation})"
       '') config.systemSpecs.displays.monitors)}
     '' else ''
       echo "║ • No monitors detected in JSON file"

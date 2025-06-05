@@ -6,8 +6,27 @@ This guide explains the JSON-based system detection architecture used in this Ni
 
 The system uses a two-phase detection approach:
 
-1. **Pre-build Detection**: `extras/detect-system-specs.sh` analyzes the current system and generates `system-specs.json`
-2. **Build-time Configuration**: `lib/system-specs.nix` reads the JSON file and provides specifications to all modules
+1. **Pre-build Detection**: `extras/detect-system-specs.sh` analyzes the current system and generates `system-specs.jso**Recent Fixes Applied
+
+**Refresh Rate Detection Fix (June 2025):**
+- **Issue**: All monitors incorrectly reported 60 Hz refresh rate regardless of actual current mode
+- **Solution**: Implemented Python-based gdbus parser to extract exact current refresh rates from GNOME display configuration
+- **Result**: Monitors now report accurate refresh rates (e.g., DP-5: 30 Hz from 29.981 Hz, DP-7: 60 Hz from 59.997 Hz)
+
+**Panel ID Detection Fix (June 2025):**
+- **Issue**: Panel IDs were hardcoded as "eDP-1" instead of extracting real panel information
+- **Solution**: Implemented gdbus-based extraction from GNOME display configuration
+- **Result**: Panel IDs now correctly show as "AUO-0x00000000" format with real manufacturer data
+
+**Storage Model Detection Fix (June 2025):**
+- **Issue**: Storage device models were showing as "null" even when model information was available
+- **Solution**: Added fallback to `/sys/block/{device}/device/model` when lsblk returns null
+- **Result**: Storage devices now show proper models like "Micron 2300 NVMe 1024GB"
+
+**Network Interface Detection Fix (June 2025):**
+- **Issue**: Network interfaces with "lo" in their name (like "wlo1") were incorrectly filtered out
+- **Solution**: Changed filter from `grep -v "lo"` to `grep -v "^lo$"` to only exclude exact "lo" interface
+- **Result**: Wireless interfaces like "wlo1" are now properly detectedme Configuration**: `lib/system-specs.nix` reads the JSON file and provides specifications to all modules
 
 This architecture ensures reliable builds while enabling full hardware-specific customization.
 
@@ -90,7 +109,10 @@ The `system-specs.json` file contains:
         "width": 1920,
         "height": 1080,
         "orientation": "landscape|portrait",
-        "panel_id": "AUO-0x00000000"
+        "panel_id": "AUO-0x00000000",
+        "rotation": "normal|left|right|inverted",
+        "actual_orientation": "landscape|portrait",
+        "refresh_rate": 60
       }
     ],
     "primary": "eDP-1"
@@ -178,36 +200,40 @@ Applications can automatically adapt to detected monitor configurations:
 
 ## System Detection Report
 
-During Home Manager activation, you'll see a detailed report:
+When running the detection script, you'll see this output:
 
 ```
-📋 System Detection Report
-==========================
+🔍 Detecting system specifications...
+   📋 Detecting system information...
+   🖥️  Detecting CPU information...
+   🎮 Detecting GPU information...
+   🖥️  Detecting monitor information...
+   💾 Detecting memory information...
+   💿 Detecting storage information...
+   🌐 Detecting network information...
+   🏷️  Classifying system type...
+✅ System specifications detected and saved to: /home/$USER/.nix-config/system-specs.json
 
-Detection Method:
-  ✅ JSON-based system detection active
+📋 Summary:
+   • System ID: laptop-20Y30016MX-hybrid
+   • Hostname: fedora
+   • OS: Fedora Linux 42 (Workstation Edition)
+   • CPU: 11th Gen Intel(R) Core(TM) i7-11850H @ 2.50GHz
+   • GPUs: 2 detected
+   • Displays: 3 detected
+   • Memory: 62 GB
+   • Is Laptop: true
 
-System Specifications:
-  • System ID: laptop-Latitude_7410-intel  
-  • Hostname: fedora
-  • OS: Fedora Linux 42 (Workstation Edition)
-  • Architecture: x86_64
-  • CPU: Intel(R) Core(TM) i7-10610U CPU @ 1.80GHz (8 cores)
-  • Memory: 31 GB
-  • Laptop: Yes
-
-GPU Detection:
-  ✅ Intel GPU detected
-
-Monitor Configuration:
-  • Monitor count: 1
-  • Primary monitor: eDP-1 (1920x1080, landscape)
+💡 Run 'cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
 ```
 
-This report shows:
-- **Detection Method**: Confirms JSON-based system is active
-- **System Specifications**: Hardware and OS details detected at build-time  
-- **Monitor Configuration**: Display setup used for application configuration
+During Home Manager activation, you'll also see a detailed boxed report from the system-info.nix module showing the parsed JSON data with complete hardware specifications and monitor configurations.
+
+This detection output shows:
+- **Detection Progress**: Step-by-step hardware detection process with emoji indicators
+- **Success Confirmation**: JSON file location and successful generation
+- **Hardware Summary**: Key system specifications in a concise format
+- **Next Steps**: Command to rebuild Home Manager configuration with detected specifications
 
 ## Hardware Support
 
@@ -229,14 +255,16 @@ Supported GPU vendors:
 
 Monitor detection uses multiple fallback methods:
 
-1. **xrandr** - X11 display information (preferred method)
+1. **GNOME Display Config (gdbus)** - Primary method for current refresh rates
+   - Queries GNOME Mutter display configuration for accurate current mode detection
+   - Extracts exact refresh rates (e.g., 29.981 Hz, 59.997 Hz) using Python-based parser
+   - Most reliable method for detecting active refresh rates
+2. **xrandr** - X11 display information (fallback method)
    - Gets resolution, orientation, and connection status
    - Attempts panel ID extraction from EDID data
-2. **GNOME Display Config (gdbus)** - Desktop environment method
-   - Queries GNOME Mutter display configuration
-   - Reliable source for panel manufacturer and product IDs
+   - Used as fallback when gdbus method fails
 3. **DRM connector data** - Direct hardware queries
-   - Fallback when X11 is not available
+   - Final fallback when X11 is not available
 
 **Panel ID Detection Process:**
 1. **GNOME gdbus method** - Primary method using `org.gnome.Mutter.DisplayConfig.GetCurrentState`
@@ -247,11 +275,26 @@ Monitor detection uses multiple fallback methods:
    - i2c direct reading (if available)
 3. **Vendor-specific fallbacks** - For known laptop models when EDID fails
 
+**Refresh Rate Detection Process:**
+1. **GNOME gdbus method** - Primary method for accurate current refresh rates
+   - Uses Python parser to extract current mode with 'is-current': true flag
+   - Provides exact refresh rates (e.g., 29.981 Hz for reduced refresh rate displays)
+   - Rounds to nearest integer for JSON output (29.981 Hz → 30 Hz)
+2. **xrandr fallback** - When gdbus unavailable or fails
+   - Looks for current mode marked with asterisk (*)
+   - Extracts refresh rate from active display mode
+3. **DRM modes fallback** - Hardware-level detection
+   - Reads from `/sys/class/drm/card*-{monitor}/modes`
+   - Uses preferred mode when current mode unavailable
+
 Detected monitor properties:
 - **Connection name** (eDP-1, HDMI-1, DP-1, etc.)
 - **Resolution** (width x height in pixels)
 - **Orientation** (landscape/portrait)
 - **Panel ID** (vendor-product format like "AUO-0x00000000")
+- **Rotation** (normal/left/right/inverted from GNOME monitors.xml)
+- **Actual orientation** (computed based on resolution and rotation)
+- **Refresh rate** (current active refresh rate in Hz)
 - **Primary status** (which monitor is primary)
 
 ### Storage Detection
@@ -309,6 +352,9 @@ lspci | grep -i "vga\|display"        # Graphics cards
 xrandr --query                        # Connected monitors
 cat /sys/class/dmi/id/sys_vendor      # System vendor
 cat /sys/class/dmi/id/product_name    # System model
+
+# Check current refresh rates manually
+gdbus call --session --dest org.gnome.Mutter.DisplayConfig --object-path /org/gnome/Mutter/DisplayConfig --method org.gnome.Mutter.DisplayConfig.GetCurrentState
 ```
 
 ### Common Issues
@@ -347,23 +393,6 @@ Enable verbose output in detection script:
 cd ~/.nix-config
 DEBUG=1 ./extras/detect-system-specs.sh
 ```
-
-### Recent Fixes Applied
-
-**Panel ID Detection Fix (June 2025):**
-- **Issue**: Panel IDs were hardcoded as "eDP-1" instead of extracting real panel information
-- **Solution**: Implemented gdbus-based extraction from GNOME display configuration
-- **Result**: Panel IDs now correctly show as "AUO-0x00000000" format with real manufacturer data
-
-**Storage Model Detection Fix (June 2025):**
-- **Issue**: Storage device models were showing as "null" even when model information was available
-- **Solution**: Added fallback to `/sys/block/{device}/device/model` when lsblk returns null
-- **Result**: Storage devices now show proper models like "Micron 2300 NVMe 1024GB"
-
-**Network Interface Detection Fix (June 2025):**
-- **Issue**: Network interfaces with "lo" in their name (like "wlo1") were incorrectly filtered out
-- **Solution**: Changed filter from `grep -v "lo"` to `grep -v "^lo$"` to only exclude exact "lo" interface
-- **Result**: Wireless interfaces like "wlo1" are now properly detected
 
 ## Integration Examples
 
@@ -440,14 +469,3 @@ Example of application adapting to detected hardware:
 └── docs/
     └── system-detection-guide.md  # This documentation
 ```
-
-## Migration from Old System
-
-If migrating from the old `systemConfig` parameter approach:
-
-1. **Remove old references**: Update modules to use `config.systemSpecs` instead of `systemConfig` parameters
-2. **Run detection**: Generate initial `system-specs.json` file
-3. **Clean up**: Remove old override files and detection modules
-4. **Test**: Verify all functionality works with new architecture
-
-The new system provides the same functionality with better reliability, maintainability, and clearer error handling when the JSON file is missing.

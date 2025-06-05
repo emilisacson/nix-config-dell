@@ -1,6 +1,25 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
-{
+let
+  # System-specific application configurations
+  # Define which applications should be installed per system
+  systemSpecs = config.systemSpecs;
+  systemId = systemSpecs.system_id or "unknown";
+
+  # System-specific application mappings
+  systemSpecificApps = {
+    "laptop-20Y30016MX-hybrid" = [
+      pkgs.teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
+    ];
+    "laptop-Latitude_7410-intel" = [
+      # No system-specific apps for this system
+    ];
+  };
+
+  # Get applications for current system (fallback to empty list if system not found)
+  currentSystemApps = systemSpecificApps.${systemId} or [ ];
+
+in {
   # Import specific application modules
   imports = [
     #./citrix.nix
@@ -19,14 +38,14 @@
   ];
 
   # Install applications
-  home.packages = with pkgs; [
-    keepassxc
-
-    p3x-onenote # OneNote alternative (patrikx3/onenote)
-    #teams-for-linux # Microsoft Teams client (IsmaelMartinez/teams-for-linux)
-
-    git
-    tmux
-    appeditor
-  ];
+  home.packages = with pkgs;
+    [
+      # Core applications (installed on all systems)
+      keepassxc
+      p3x-onenote # OneNote alternative (patrikx3/onenote)
+      git
+      tmux
+      appeditor
+      hwinfo
+    ] ++ currentSystemApps; # Add system-specific applications
 }

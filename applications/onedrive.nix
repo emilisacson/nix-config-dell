@@ -1,11 +1,17 @@
 { config, pkgs, lib, ... }:
 
-{
+let
+  # Only enable OneDrive on specific systems
+  systemSpecs = config.systemSpecs;
+  systemId = systemSpecs.system_id or "unknown";
+  enableOneDrive = systemId == "laptop-20Y30016MX-hybrid";
+
+in lib.mkIf enableOneDrive {
   # Install OneDrive clients and GUI tools
   home.packages = with pkgs; [
     # Base OneDrive client (CLI)
     onedrive
-    
+
     # GUI for OneDrive
     onedrivegui
   ];

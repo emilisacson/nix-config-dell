@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   # System-specific application configurations
@@ -28,13 +28,13 @@ in {
     ./python.nix
     ./brave.nix
     # ./evolution.nix
-    ./onedrive.nix
+    ./onedrive.nix # OneDrive with proper configuration (conditional inside)
     # ./onenote.nix
     ./discord.nix
     ./flameshot.nix
     ./obs-studio.nix
     ./media-codecs.nix
-    ./obsidian.nix
+    ./obsidian.nix # Obsidian with proper configuration (conditional inside)
   ];
 
   # Install applications

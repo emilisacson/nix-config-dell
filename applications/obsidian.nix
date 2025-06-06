@@ -1,6 +1,12 @@
-{ pkgs, lib, nixgl ? { }, ... }:
+{ config, pkgs, lib, nixgl ? { }, ... }:
 
-{
+let
+  # Only enable Obsidian on specific systems
+  systemSpecs = config.systemSpecs;
+  systemId = systemSpecs.system_id or "unknown";
+  enableObsidian = systemId == "laptop-20Y30016MX-hybrid";
+
+in lib.mkIf enableObsidian {
   home.packages = with pkgs; [
     obsidian
     # Install nixGL for OpenGL support (it's available through the overlay)

@@ -456,6 +456,116 @@ Example of application adapting to detected hardware:
 }
 ```
 
+## System-Specific Module Configuration
+
+### Conditional Module Loading
+
+For applications that should only be installed on specific systems, you can make entire modules conditional using `lib.mkIf`. This approach ensures that not only packages, but all configuration (desktop entries, services, scripts, etc.) is only applied on the target systems.
+
+#### Example: System-Specific Application Module
+
+```nix
+# applications/onedrive.nix
+{ config, pkgs, lib, ... }:
+
+let
+  # Only enable OneDrive on specific systems
+  systemSpecs = config.systemSpecs;
+  systemId = systemSpecs.system_id or "unknown";
+  enableOneDrive = systemId == "laptop-20Y30016MX-hybrid";
+
+in lib.mkIf enableOneDrive {
+  # Install OneDrive clients and GUI tools
+  home.packages = with pkgs; [
+    onedrive
+    onedrivegui
+  ];
+
+  # Desktop entries and autostart configuration
+  xdg.desktopEntries.onedrivegui-autostart = {
+    name = "OneDriveGUI";
+    exec = "onedrivegui";
+    icon = "onedrivegui";
+    comment = "GUI for OneDrive Client";
+    categories = [ "Utility" ];
+    terminal = false;
+    startupNotify = false;
+  };
+
+  # Autostart configuration
+  xdg.configFile."autostart/onedrivegui.desktop" = {
+    text = ''
+      [Desktop Entry]
+      Name=OneDriveGUI
+      Exec=onedrivegui
+      Icon=onedrivegui
+      Comment=GUI for OneDrive Client
+      Categories=Utility;
+      Terminal=false
+      StartupNotify=false
+      Type=Application
+    '';
+  };
+}
+```
+
+#### System-Specific Application Management
+
+In `applications/applications.nix`, you can import these conditional modules normally:
+
+```nix
+# applications/applications.nix
+{ config, pkgs, lib, ... }:
+
+{
+  imports = [
+    ./vscode.nix
+    ./steam.nix
+    ./python.nix
+    ./brave.nix
+    ./discord.nix
+    ./flameshot.nix
+    ./obs-studio.nix
+    ./onedrive.nix    # Only applies on laptop-20Y30016MX-hybrid
+    ./obsidian.nix    # Only applies on laptop-20Y30016MX-hybrid
+  ];
+
+  # Core applications (installed on all systems)
+  home.packages = with pkgs; [
+    keepassxc
+    git
+    tmux
+    appeditor
+    hwinfo
+  ];
+}
+```
+
+#### Benefits of This Approach
+
+- **Clean separation**: System-specific logic is contained within each module
+- **Complete conditioning**: All configuration (packages, files, services) is conditional
+- **Maintainable**: Easy to add new systems or modify conditions
+- **Explicit**: Clear which modules apply to which systems
+- **No duplication**: Uses the centralized system detection
+
+#### Supported System IDs
+
+Current system IDs that can be used for conditional configuration:
+
+- `laptop-20Y30016MX-hybrid` - ThinkPad with NVIDIA+Intel graphics
+- `laptop-Latitude_7410-intel` - Dell Latitude with Intel graphics
+- Add more as systems are detected
+
+#### Why Not Conditional Imports?
+
+While it might seem cleaner to make the `imports` themselves conditional, this approach has technical limitations:
+
+- Nix evaluates `imports` before the configuration system is available
+- Would require duplicating JSON reading logic
+- Could cause evaluation inconsistencies
+- The `lib.mkIf` approach is the idiomatic Nix way for conditional configuration
+
 ## File Structure
 
 ```

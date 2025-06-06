@@ -41,6 +41,12 @@
     show-status-icon = true;
   };
 
+  # GNOME Shell Extensions settings - Allow network access
+  "org/gnome/shell/extensions" = {
+    allowed-extensions = [ "extensions.gnome.org" "localhost" ];
+    user-extensions-enabled = true;
+  };
+
   # Tiling Assistant settings (can be expanded as needed)
   "org/gnome/shell/extensions/tiling-assistant" = {
     # Add tiling assistant specific settings here if needed

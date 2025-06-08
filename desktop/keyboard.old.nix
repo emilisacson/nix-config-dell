@@ -44,7 +44,6 @@ in {
   home.packages = with pkgs; [
     xorg.xkbcomp # Add xkbcomp for custom keyboard layouts
     libnotify # For notify-send in the script
-    xbindkeys # For intercepting Super+Space key combination
   ];
 
   # Configure dual keyboard layout based on system configuration
@@ -58,22 +57,6 @@ in {
       ];
       current = currentLayout;
     };
-  };
-
-  # Create autostart entry for the smart layout switcher
-  xdg.configFile."autostart/smart-layout-switcher.desktop" = {
-    text = ''
-      [Desktop Entry]
-      Name=Smart Layout Switcher
-      Exec=${config.home.homeDirectory}/.nix-config/extras/smart-layout-switcher.sh
-      Comment=Intelligent Super+Space layout switching with automatic Ctrl overlay management
-      Categories=Utility;
-      Terminal=false
-      StartupNotify=false
-      Type=Application
-      X-GNOME-Autostart-Delay=3
-    '';
-    executable = true;
   };
 
   # Create autostart entry for the custom keyboard setup script

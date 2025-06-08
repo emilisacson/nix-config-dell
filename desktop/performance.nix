@@ -86,9 +86,6 @@ in {
 
   # Add system-specific environment variables for performance tuning
   home.sessionVariables = {
-    # GPU-specific variables
-    __GLX_VENDOR_LIBRARY_NAME = lib.mkIf systemSpecs.hasNvidiaGPU "nvidia";
-
     # Performance tier indicator
     PERFORMANCE_TIER = performanceTier;
 
@@ -102,6 +99,9 @@ in {
       "65536"
     else
       "32768";
+  } // lib.optionalAttrs systemSpecs.hasNvidiaGPU {
+    # GPU-specific variables only when Nvidia GPU is present
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
 
   # System-specific packages based on hardware

@@ -119,6 +119,16 @@ gtk-update-icon-cache -f ~/.local/share/icons/hicolor 2>/dev/null || true
 busctl --user call org.gnome.Shell /org/gnome/Shell org.gnome.Shell Eval s 'Meta.restart("Restarting…")'
 ```
 
+### Clear GNOME's application cache
+```bash
+rm -rf ~/.cache/gnome-shell/applications
+```
+
+### Restart GNOME Shell (on Wayland)
+```bash
+killall -SIGUSR1 gnome-shell
+```
+
 ### Check Dash to Panel settings with dconf
 ```bash
 dconf dump /org/gnome/shell/extensions/dash-to-panel/

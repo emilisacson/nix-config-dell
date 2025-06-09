@@ -1,12 +1,15 @@
-{ pkgs, lib, nixgl ? { }, ... }:
+{ pkgs, ... }:
 
-{ # Install OBS Studio with nixGL wrapper for graphics support
+{
+  # Install OBS Studio with nixGL wrapper for graphics support
   home.packages = with pkgs; [
     # Regular OBS Studio package
     obs-studio
 
-    # Install nixGL for OpenGL support (it's available through the overlay)
-    nixgl
+    # nixGL wrappers for different graphics configurations
+    nixgl.auto.nixGLDefault # Auto-detect (recommended)
+    nixgl.auto.nixGLNvidia # Nvidia proprietary drivers
+    nixgl.nixGLIntel # Intel/Mesa drivers
   ];
 
   # Create a wrapper script for OBS Studio with nixGL
@@ -15,32 +18,58 @@
       #!/usr/bin/env bash
       # OBS Studio launcher with nixGL for graphics support
 
-      if command -v nixGL &> /dev/null; then
-          echo "Using nixGL for OBS Studio..."
-          exec nixGL obs
+      # Try to detect the best nixGL wrapper to use
+      if command -v nixGLDefault &> /dev/null; then
+          echo "Using nixGLDefault (auto-detect) for OBS Studio..."
+          exec nixGLDefault obs &
+      elif command -v nixGLNvidia &> /dev/null; then
+          echo "Using nixGLNvidia for OBS Studio..."
+          exec nixGLNvidia obs &
+      elif command -v nixGLIntel &> /dev/null; then
+          echo "Using nixGLIntel for OBS Studio..."
+          exec nixGLIntel obs &
       else
-          echo "nixGL not found, trying to run OBS Studio directly..."
+          echo "No nixGL wrapper found, trying to run OBS Studio directly..."
           echo "If this fails, make sure nixGL is properly installed."
-          exec obs
+          exec obs &
       fi
     '';
     executable = true;
   };
 
-  # Add all desktop entries in a single definition to avoid duplicated attribute errors
-  xdg.desktopEntries = {
-    # Base OBS Studio entry with nixGL wrapper
-    obs-studio = {
-      name = "OBS Studio (with nixGL)";
-      comment =
-        "Free and open source software for live streaming and screen recording";
-      exec = "obs-nixgl";
-      icon = "com.obsproject.Studio";
-      terminal = false;
-      categories = [ "AudioVideo" "Recorder" ];
-      mimeType = [ "application/x-obs-scene" ];
-      startupNotify = true;
-    };
+  # Create desktop entry for OBS Studio with nixGL
+  xdg.desktopEntries.obs-studio = {
+    name = "OBS Studio (with nixGL)";
+    comment =
+      "Free and open source software for live streaming and screen recording";
+    exec = "obs-nixgl"; # Changed to run the custom wrapper script
+    icon = "com.obsproject.Studio";
+    terminal = false;
+    categories = [ "AudioVideo" "Recorder" ];
+    mimeType = [ "application/x-obs-scene" ];
+    startupNotify = true;
+  };
+
+  # Alternative desktop entries for specific graphics drivers
+  xdg.desktopEntries.obs-studio-nvidia = {
+    name = "OBS Studio (Nvidia)";
+    comment = "OBS Studio with Nvidia graphics support";
+    exec =
+      "${pkgs.nixgl.auto.nixGLNvidia}/bin/nixGLNvidia ${pkgs.obs-studio}/bin/obs";
+    icon = "com.obsproject.Studio";
+    terminal = false;
+    categories = [ "AudioVideo" "Recorder" ];
+    noDisplay = true; # Hidden by default, available if needed
+  };
+
+  xdg.desktopEntries.obs-studio-intel = {
+    name = "OBS Studio (Intel)";
+    comment = "OBS Studio with Intel graphics support";
+    exec = "${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.obs-studio}/bin/obs";
+    icon = "com.obsproject.Studio";
+    terminal = false;
+    categories = [ "AudioVideo" "Recorder" ];
+    noDisplay = true; # Hidden by default, available if needed
   };
 
   # Declaratively override the default com.obsproject.Studio.desktop
@@ -53,5 +82,7 @@
       NoDisplay=true
       Type=Application
     '';
+    # This ensures the file is created if it doesn't exist, or overwritten if it does.
+    # It will be managed by Home Manager.
   };
 }

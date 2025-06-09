@@ -1,35 +1,32 @@
-// Enhanced XKB configuration for Swedish Dvorak (svdvorak) with Ctrl key behavior
-// Compatible with both Wayland and Xwayland
+// XKB configuration for Swedish Dvorak (svdvorak) with Ctrl overlay to Swedish QWERTY
 xkb_keymap {
     xkb_keycodes  { include "evdev" };
     xkb_types     { include "complete" };
     xkb_compat    { include "complete" };
     xkb_symbols   {
-        // Include Swedish Dvorak layout and standard Swedish as fallback
+        // Include Swedish Dvorak as primary and Swedish QWERTY as secondary
         include "pc+se(svdvorak)+se:2+inet(evdev)"
         
         // Override default group names for clarity
         name[Group1]= "Swedish (Dvorak)";
         name[Group2]= "Swedish (QWERTY)";
         
-        // Define Ctrl keys with proper group switching behavior
-        // This uses a two-level key type to handle press/release correctly
+        // Define Ctrl keys with group switching behavior
+        // Use a mechanism that switches group while held
         key <LCTL> {
-            type[Group1] = "CTRL_ALT",
-            type[Group2] = "CTRL_ALT",
-            symbols[Group1] = [ Control_L, Control_L ],
-            symbols[Group2] = [ Control_L, Control_L ],
-            actions[Group1] = [ SetGroup(group=2), SetGroup(group=1) ],
-            actions[Group2] = [ NoAction(), NoAction() ]
+            type = "ONE_LEVEL",
+            symbols[Group1] = [ Control_L ],
+            symbols[Group2] = [ Control_L ],
+            actions[Group1] = [ SetGroup(group=2) ],
+            actions[Group2] = [ SetGroup(group=1) ]
         };
         key <RCTL> {
-            type[Group1] = "CTRL_ALT", 
-            type[Group2] = "CTRL_ALT",
-            symbols[Group1] = [ Control_R, Control_R ],
-            symbols[Group2] = [ Control_R, Control_R ],
-            actions[Group1] = [ SetGroup(group=2), SetGroup(group=1) ],
-            actions[Group2] = [ NoAction(), NoAction() ]
+            type = "ONE_LEVEL", 
+            symbols[Group1] = [ Control_R ],
+            symbols[Group2] = [ Control_R ],
+            actions[Group1] = [ SetGroup(group=2) ],
+            actions[Group2] = [ SetGroup(group=1) ]
         };
     };
-    xkb_geometry  { include "pc(pc105)" };
+    xkb_geometry  { include "pc(pc104)" };
 };

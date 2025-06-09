@@ -1,16 +1,19 @@
-{ pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   # Install OBS Studio with nixGL wrapper for graphics support
-  home.packages = with pkgs; [
-    # Regular OBS Studio package
-    obs-studio
+  home.packages = with pkgs;
+    [
+      # Regular OBS Studio package
+      obs-studio
 
-    # nixGL wrappers for different graphics configurations
-    nixgl.auto.nixGLDefault # Auto-detect (recommended)
-    nixgl.auto.nixGLNvidia # Nvidia proprietary drivers
-    nixgl.nixGLIntel # Intel/Mesa drivers
-  ];
+      # nixGL wrappers based on detected hardware
+      nixgl.auto.nixGLDefault # Auto-detect (always included)
+    ] ++ lib.optionals config.systemSpecs.hasNvidiaGPU [
+      nixgl.auto.nixGLNvidia # Only include if Nvidia GPU detected
+    ] ++ lib.optionals config.systemSpecs.hasIntelGPU [
+      nixgl.nixGLIntel # Only include if Intel GPU detected
+    ];
 
   # Create a wrapper script for OBS Studio with nixGL
   home.file.".local/bin/obs-nixgl" = {
@@ -21,68 +24,68 @@
       # Try to detect the best nixGL wrapper to use
       if command -v nixGLDefault &> /dev/null; then
           echo "Using nixGLDefault (auto-detect) for OBS Studio..."
-          exec nixGLDefault obs &
+          exec nixGLDefault obs "$@"
       elif command -v nixGLNvidia &> /dev/null; then
           echo "Using nixGLNvidia for OBS Studio..."
-          exec nixGLNvidia obs &
+          exec nixGLNvidia obs "$@"
       elif command -v nixGLIntel &> /dev/null; then
           echo "Using nixGLIntel for OBS Studio..."
-          exec nixGLIntel obs &
+          exec nixGLIntel obs "$@"
       else
           echo "No nixGL wrapper found, trying to run OBS Studio directly..."
           echo "If this fails, make sure nixGL is properly installed."
-          exec obs &
+          exec obs "$@"
       fi
     '';
     executable = true;
   };
 
-  # Create desktop entry for OBS Studio with nixGL
-  xdg.desktopEntries.obs-studio = {
-    name = "OBS Studio (with nixGL)";
-    comment =
-      "Free and open source software for live streaming and screen recording";
-    exec = "obs-nixgl"; # Changed to run the custom wrapper script
-    icon = "com.obsproject.Studio";
-    terminal = false;
-    categories = [ "AudioVideo" "Recorder" ];
-    mimeType = [ "application/x-obs-scene" ];
-    startupNotify = true;
-  };
+  # Note: Main desktop entry is created below via home.file override
+  # This ensures proper taskbar integration with the expected filename
 
-  # Alternative desktop entries for specific graphics drivers
-  xdg.desktopEntries.obs-studio-nvidia = {
-    name = "OBS Studio (Nvidia)";
-    comment = "OBS Studio with Nvidia graphics support";
-    exec =
-      "${pkgs.nixgl.auto.nixGLNvidia}/bin/nixGLNvidia ${pkgs.obs-studio}/bin/obs";
-    icon = "com.obsproject.Studio";
-    terminal = false;
-    categories = [ "AudioVideo" "Recorder" ];
-    noDisplay = true; # Hidden by default, available if needed
-  };
+  # Alternative desktop entries for specific graphics drivers - only create if GPU is available
+  xdg.desktopEntries.obs-studio-nvidia =
+    lib.mkIf config.systemSpecs.hasNvidiaGPU {
+      name = "OBS Studio (Nvidia)";
+      comment = "OBS Studio with Nvidia graphics support";
+      exec = "nixGLNvidia obs";
+      icon = "com.obsproject.Studio";
+      terminal = false;
+      categories = [ "AudioVideo" "Recorder" ];
+      noDisplay = true; # Hidden by default, available if needed
+      startupNotify = true;
+    };
 
-  xdg.desktopEntries.obs-studio-intel = {
-    name = "OBS Studio (Intel)";
-    comment = "OBS Studio with Intel graphics support";
-    exec = "${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.obs-studio}/bin/obs";
-    icon = "com.obsproject.Studio";
-    terminal = false;
-    categories = [ "AudioVideo" "Recorder" ];
-    noDisplay = true; # Hidden by default, available if needed
-  };
+  xdg.desktopEntries.obs-studio-intel =
+    lib.mkIf config.systemSpecs.hasIntelGPU {
+      name = "OBS Studio (Intel)";
+      comment = "OBS Studio with Intel graphics support";
+      exec = "nixGLIntel obs";
+      icon = "com.obsproject.Studio";
+      terminal = false;
+      categories = [ "AudioVideo" "Recorder" ];
+      noDisplay = true; # Hidden by default, available if needed
+      startupNotify = true;
+    };
 
-  # Declaratively override the default com.obsproject.Studio.desktop
-  # to hide it, ensuring the nixGL version is preferred.
+  # Override the default com.obsproject.Studio.desktop with our nixGL version
+  # This ensures proper taskbar integration by using the expected desktop file name
   home.file.".local/share/applications/com.obsproject.Studio.desktop" = {
     text = ''
       [Desktop Entry]
-      Name=OBS Studio (Default - Hidden by Nix)
-      Comment=Default OBS Studio entry, hidden by Nix to prefer nixGL version
-      NoDisplay=true
+      Version=1.0
       Type=Application
+      Name=OBS Studio (nixGL)
+      Comment=Free and open source software for live streaming and screen recording
+      Exec=obs-nixgl
+      Icon=com.obsproject.Studio
+      Terminal=false
+      Categories=AudioVideo;Recorder;
+      MimeType=application/x-obs-scene;
+      StartupNotify=true
+      StartupWMClass=obs
+      Keywords=streaming;recording;broadcast;
     '';
-    # This ensures the file is created if it doesn't exist, or overwritten if it does.
-    # It will be managed by Home Manager.
+    # This completely replaces the original desktop file for proper taskbar integration
   };
 }

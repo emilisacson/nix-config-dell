@@ -1,0 +1,106 @@
+Opening in existing browser session.
+🧪 Testing Rate-Limited OneNote Export
+==================================================
+🔐 Authenticating with Microsoft Graph...
+🌐 Opening browser for authentication...
+✅ Authentication successful!
+
+📓 Getting personal notebooks...
+📓 Checking personal notebooks...
+✅ Found 1 personal notebooks
+✅ Found 1 personal notebooks
+
+🎯 Testing rate-limited notebook: Emil @ Compose IT Nordic AB
+      ⚠️  Notebook rate-limited (>5000 items), trying alternative access...
+      🔧 Trying alternative access methods for rate-limited notebook...
+         📄 Method 1: Getting recent pages...
+         🔍 Method 2: Using drive search results...
+🔍 Searching for individual OneNote files via Drive API...
+   📋 Found 200 search results
+   ✅ Found 20 OneNote files
+         📁 Found 20 OneNote files in drive
+      ✅ Successfully accessed via alternative method!
+✅ Successfully got notebook structure via alternative methods!
+   📚 Notebook: Emil @ Compose IT Nordic AB
+   🌐 Site: Personal (Drive Files)
+   📁 Sections: 1
+   📄 Total pages: 10
+
+📝 Creating export file...
+   📓 Creating: test_rate_limited_export/Personal_(Drive_Files)/Emil_@_Compose_IT_Nordic_AB.ipynb
+         📁 Processing drive file: Metadata Onenote.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Metadata Onenote.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 10 files in SharePoint site
+            ✅ Successfully got SharePoint file content (69572 characters)
+         📁 Processing drive file: Referens.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Referens.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 100 files in SharePoint site
+            ❌ Could not get SharePoint file content: 404 - {"error":{"code":"itemNotFound","message":"The resource could not be found."}}
+            ✅ Successfully got SharePoint file content (6302638 characters)
+         📁 Processing drive file: BaneNor.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: BaneNor.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 1 files in SharePoint site
+            ✅ Successfully got SharePoint file content (251112 characters)
+         📁 Processing drive file: node-red.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: node-red.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 27 files in SharePoint site
+            ✅ Successfully got SharePoint file content (439982 characters)
+         📁 Processing drive file: Ellevio test env.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Ellevio test env.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 25 files in SharePoint site
+            ❌ Could not get SharePoint file content: 404 - {"error":{"code":"itemNotFound","message":"The resource could not be found."}}
+            ✅ Successfully got SharePoint file content (10248194 characters)
+         📁 Processing drive file: Resor.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Resor.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 16 files in SharePoint site
+            ✅ Successfully got SharePoint file content (3330519 characters)
+         📁 Processing drive file: Sandvik.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Sandvik.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 14 files in SharePoint site
+            ✅ Successfully got SharePoint file content (71665 characters)
+         📁 Processing drive file: Azure project.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Azure project.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 6 files in SharePoint site
+            ✅ Successfully got SharePoint file content (19519925 characters)
+         📁 Processing drive file: Region Blekinge.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Region Blekinge.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 7 files in SharePoint site
+            ✅ Successfully got SharePoint file content (15146767 characters)
+         📁 Processing drive file: Fun.one
+            🔍 Attempting to access drive file content...
+            🌐 SharePoint OneNote file detected: Fun.one
+            🏢 Trying SharePoint site access: composeit-my.sharepoint.com/personal/arvid_carlander_compose_se
+            ✅ Got SharePoint site ID: composeit-my.sharepo...
+            📋 Found 108 files in SharePoint site
+            ✅ Successfully got SharePoint file content (600409 characters)
+      ✅ Exported 10 pages to test_rate_limited_export/Personal_(Drive_Files)/Emil_@_Compose_IT_Nordic_AB.ipynb
+✅ Export successful: test_rate_limited_export/Personal_(Drive_Files)/Emil_@_Compose_IT_Nordic_AB.ipynb
+
+🎉 Rate-limited export test PASSED!

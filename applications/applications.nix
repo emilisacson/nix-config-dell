@@ -27,22 +27,19 @@ in {
     ./steam.nix
     ./python.nix
     ./brave.nix
-    # ./evolution.nix
-    ./onedrive.nix # OneDrive with proper configuration (conditional inside)
-    # ./onenote.nix
+    ./onedrive.nix
     ./discord.nix
     ./flameshot.nix
     ./obs-studio.nix
     ./media-codecs.nix
-    ./obsidian.nix # Obsidian with proper configuration (conditional inside)
+    ./obsidian.nix
+    ./onenote-graph.nix
   ];
 
-  # Install applications
   home.packages = with pkgs;
     [
       # Core applications (installed on all systems)
       keepassxc
-      p3x-onenote # OneNote alternative (patrikx3/onenote)
       git
       tmux
       appeditor

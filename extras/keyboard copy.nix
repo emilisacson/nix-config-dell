@@ -64,7 +64,7 @@ in {
     text = ''
       [Desktop Entry]
       Name=Custom Keyboard Layout
-      Exec=${config.home.homeDirectory}/.nix-config/extras/setup-custom-keyboard.old.sh
+      Exec=${config.home.homeDirectory}/.nix-config/extras/setup-custom-keyboard.sh
       Comment=Load custom keyboard configuration for Ctrl key behavior
       Categories=Utility;
       Terminal=false
@@ -111,7 +111,7 @@ in {
       sleep 1
 
       # Reapply the custom layout via autostart script
-      ${config.home.homeDirectory}/.nix-config/extras/setup-custom-keyboard.old.sh &
+      ${config.home.homeDirectory}/.nix-config/extras/setup-custom-keyboard.sh &
 
       notify-send "Keyboard Reset" "Layout state cleared and custom layout reloading..."
     '';

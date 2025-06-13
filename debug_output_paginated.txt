@@ -1,0 +1,190 @@
+Opening in existing browser session.
+🚀 Detailed OneNote Access Test
+==================================================
+🔐 Testing Authentication...
+Client ID: 8a52ee61-c61a-4873-bfc6-489fa574e92c
+Tenant ID: d8fe6df3-c89e-4fa6-a2f8-cfcc31dffb1c
+
+🌐 Opening browser for authentication...
+✅ Authentication successful!
+
+📓 Testing Basic OneNote Access (/me/onenote/notebooks)...
+✅ Found 1 personal notebooks:
+   1. Emil @ Compose IT Nordic AB
+      ID: 1-2013fa0e-59f8-4e1c-b871-8d16ff4aa62d
+      Owner: Emil Isacson
+      Web URL: https://composeit-my.sharepoint.com/personal/emil_isacson_compose_se/Documents/Emil%20@%20Compose%20IT%20Nordic%20AB
+
+
+👥 Testing Shared Notebooks via Groups...
+   ⚠️  Note: Without Group.Read.All permission, we can't enumerate all groups
+   ℹ️  Trying alternative approaches...
+❌ Could not get joined teams: 403 - {"error":{"code":"Forbidden","message":"Missing scope permissions on the request. API requires one of 'Team.ReadBasic.All, TeamSettings.Read.All, TeamSettings.ReadWrite.All, User.Read.All, Directory.Read.All, User.ReadWrite.All, Directory.ReadWrite.All'. Scopes on the request 'Files.Read.All, Notes.Read.All, Notes.ReadWrite.All, openid, profile, Sites.Read.All, User.Read, email'","innerError":{"date":"2025-06-13T12:06:50","request-id":"d13b83f7-bef6-4604-8d8b-c10773ed5a58","client-request-id":"d13b83f7-bef6-4604-8d8b-c10773ed5a58"}}}
+
+🌐 Testing OneNote via SharePoint Sites...
+      📄 Retrieved page 1 (11 items), finished
+📋 Found 11 followed SharePoint sites across 1 pages:
+   🌐 Marknad
+      📓 Found 1 notebooks:
+         - Anteckningsbok för Marknad
+   🌐 Gävle
+      📓 Found 2 notebooks:
+         - Anteckningsbok för Gävle
+         - Gävle KB
+   🌐 Region Blekinge
+      📓 Found 1 notebooks:
+         - Anteckningsbok för Region Blekinge
+   🌐 Intranet
+      📭 No notebooks in this site
+   🌐 GDPR
+      📓 Found 1 notebooks:
+         - Anteckningsbok för GDPR
+   🌐 Örebro
+      📓 Found 1 notebooks:
+         - Anteckningsbok för Örebro
+   🌐 SupplierInfoCompose
+      📓 Found 1 notebooks:
+         - Anteckningsbok för SupplierInfoCompose
+   🌐 Knowledge
+      📓 Found 1 notebooks:
+         - Anteckningsbok för Knowledge
+   🌐 Compose Internal Development
+      📓 Found 3 notebooks:
+         - Anteckningsbok för ComposeInternalDevelopment
+         - Compose Collection
+         - Predictive insight
+   🌐 CustomerTeamCompose
+      📓 Found 4 notebooks:
+         - ANNteckningar
+         - Anteckningsbok för CustomerTeamCompose
+         - MUSE Maintenance Noteringar
+         - Notes
+
+🔍 Searching for OneNote files via Drive API...
+   🔎 Searching for: *.one
+      ❌ Search failed: 400 - {"error":{"code":"invalidRequest","message":"A potentially dangerous Request.Path value was detected from the client (*).","innerError":{"code":"badArgument","date":"2025-06-13T12:07:06","request-id":"8405cbe1-efbc-47dd-ab15-781a25056b4b","client-request-id":"8405cbe1-efbc-47dd-ab15-781a25056b4b"}}}
+   🔎 Searching for: *.onetoc2
+      ❌ Search failed: 400 - {"error":{"code":"invalidRequest","message":"A potentially dangerous Request.Path value was detected from the client (*).","innerError":{"code":"badArgument","date":"2025-06-13T12:07:06","request-id":"4b7d475d-7bbb-4732-8519-9ecc4ee9332a","client-request-id":"4b7d475d-7bbb-4732-8519-9ecc4ee9332a"}}}
+   🔎 Searching for: name:OneNote
+      📄 Retrieved page 1 (200 items), continuing...
+      📄 Retrieved page 2 (2 items), finished
+      📋 Found 202 total items across 2 pages, filtering by OneNote MIME types...
+      ✅ Found 20 OneNote files (filtered by MIME type)
+         📓 Metadata Onenote.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B8376C997-295C-461C-9D3D-774CB4322BBF%7D&file=Metadata%20Onenote.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Referens.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1&sourcedoc={597496bf-841c-49db-bf12-4f0593330efb}&wd=target(/Referens.one/)
+         📓 BaneNor.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7BF0A783C7-E232-43D6-A00B-8357EF02DC13%7D&file=BaneNor.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 node-red.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B71AE5970-8A82-47C2-B45C-ABECD6EFDF4C%7D&file=node-red.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Ellevio test env.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1&sourcedoc={597496bf-841c-49db-bf12-4f0593330efb}&wd=target(/Ellevio test env.one/)
+         📓 Resor.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B56EF6A59-4146-4D2B-BD3B-F1E20B421A89%7D&file=Resor.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Sandvik.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B31704A28-45A2-4B39-9DF5-745988EA214C%7D&file=Sandvik.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Azure project.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7BC81B9ABB-2557-4942-8B11-0A316C3A01D6%7D&file=Azure%20project.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Region Blekinge.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B4D767EFF-F430-424E-AD54-C4DE112FF45A%7D&file=Region%20Blekinge.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Fun.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B6E6D6B7F-0223-44B3-BE95-DD718F39C894%7D&file=Fun.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 SL.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B31F03658-12B4-468A-91FE-5DF1E660B597%7D&file=SL.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Personlig.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1&sourcedoc={597496bf-841c-49db-bf12-4f0593330efb}&wd=target(/Personlig One_note/Personlig.one/)
+         📓 Saker ny.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1&sourcedoc={597496bf-841c-49db-bf12-4f0593330efb}&wd=target(/Personlig One_note/Saker ny.one/)
+         📓 Kör.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7BEF2D4D7A-2DA8-4856-B64E-971FFAAE59F8%7D&file=K%C3%B6r.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Powershell.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B7D783163-9E60-4F39-9C45-2A9D7B1C2B76%7D&file=Powershell.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Kone.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B7620D775-1177-4863-AC41-17BFCDF870B5%7D&file=Kone.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 RNLI.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B85CD85FC-1087-42C9-B71C-C7FA1A6F2B32%7D&file=RNLI.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Gammalt.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7BF0342F0E-1908-4E7E-BC99-5FE665043D57%7D&file=Gammalt.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Trafikverket.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?sourcedoc=%7B6E3FB888-868A-44D5-876B-2D1EE19B5283%7D&file=Trafikverket.one&action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1
+         📓 Compose.one
+            MIME Type: application/msonenote
+            URL: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/_layouts/15/Doc.aspx?action=edit&mobileredirect=true&wdorigin=Sharepoint&DefaultItemOpen=1&sourcedoc={597496bf-841c-49db-bf12-4f0593330efb}&wd=target(/Compose.one/)
+      ℹ️  Filtered out 182 non-OneNote files
+         Example MIME types found: application/octet-stream, application/json, text/xml
+
+⏰ Checking Recent Files for OneNote...
+📋 Checking 10 recent items...
+   📭 No OneNote items found in recent files
+
+🔍 Testing Alternative OneNote Endpoints...
+
+   🔗 Testing: Personal notebooks with sections
+      Endpoint: /me/onenote/notebooks?$expand=sections
+      ❌ Failed: 403 - {"error":{"code":"10008","message":"One or more of the document libraries on the user or group’s OneDrive contains more than 5,000 OneNote items (notebooks, sections, section groups) and cannot be queried using the API. Please make sure that none of the user or group’s document libraries contains more than 5,000 OneNote items. Browse to this page for more information: https://blogs.msdn.microsoft.com/onenotedev/2016/09/11/onenote-api-calls-fail-with-a-large-number-of-items-in-a-sharepoint-document-library/","innerError":{"date":"2025-06-13T12:07:14","request-id":"5e2f4013-868f-4464-bd7f-9fc83929305c","client-request-id":"5e2f4013-868f-4464-bd7f-9fc83929305c"}}}
+
+   🔗 Testing: Business drives (may contain OneNote)
+      Endpoint: /me/drives?$filter=driveType eq 'business'
+      ✅ Success: Found 2 items
+         - PersonalCacheLibrary
+         - Dokument
+
+   🔗 Testing: Shared documents (may include OneNote)
+      Endpoint: /me/insights/shared
+      ✅ Success: Found 10 items
+         - Unknown
+         - Unknown
+         - Unknown
+
+🔍 Testing Alternative OneNote Endpoints...
+
+   🔗 Testing: Personal notebooks with sections
+      Endpoint: /me/onenote/notebooks?$expand=sections
+      ❌ Failed: 403 - {"error":{"code":"10008","message":"One or more of the document libraries on the user or group’s OneDrive contains more than 5,000 OneNote items (notebooks, sections, section groups) and cannot be queried using the API. Please make sure that none of the user or group’s document libraries contains more than 5,000 OneNote items. Browse to this page for more information: https://blogs.msdn.microsoft.com/onenotedev/2016/09/11/onenote-api-calls-fail-with-a-large-number-of-items-in-a-sharepoint-document-library/","innerError":{"date":"2025-06-13T12:07:17","request-id":"5a254310-0d3b-4cf0-a01e-332d2d8ea17a","client-request-id":"5a254310-0d3b-4cf0-a01e-332d2d8ea17a"}}}
+
+   🔗 Testing: Business drives (may contain OneNote)
+      Endpoint: /me/drives?$filter=driveType eq 'business'
+      ✅ Success: Found 2 items
+         - PersonalCacheLibrary
+         - Dokument
+
+   🔗 Testing: Shared documents (may include OneNote)
+      Endpoint: /me/insights/shared
+      ✅ Success: Found 10 items
+         - Unknown
+         - Unknown
+         - Unknown
+
+==================================================
+📊 SUMMARY:
+   Personal notebooks: 1
+   Team notebooks: 0
+   SharePoint notebooks: 15
+   Drive search results: 20
+   Recent OneNote files: 0
+   Total items found: 36
+
+✅ Found multiple OneNote sources! Consider expanding access.
+
+🔑 Current permissions working: User.Read, Notes.Read.All, Notes.ReadWrite.All, Sites.Read.All, Files.Read.All
+🚫 Missing: Group.Read.All (requires admin consent)

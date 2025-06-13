@@ -28,6 +28,15 @@
         mypy
         isort
         autopep8
+
+        # OneNote Graph API packages
+        msal
+        beautifulsoup4
+        html2text
+        pyyaml
+        click
+        rich
+        watchdog
       ]))
     tk # Tk libraries
 

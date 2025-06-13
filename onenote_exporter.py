@@ -1,0 +1,765 @@
+#!/usr/bin/env python3
+"""
+OneNote to VS Code Notebook Exporter
+Exports accessible OneNote content to VS Code notebooks with XML cell format
+Handles the 5000+ items limitation gracefully
+"""
+
+import json
+import requests
+import random
+import os
+import re
+import uuid
+import urllib.parse
+from pathlib import Path
+from msal import PublicClientApplication
+from bs4 import BeautifulSoup
+import html2text
+
+# CONFIGURE THESE VALUES
+CLIENT_ID = "8a52ee61-c61a-4873-bfc6-489fa574e92c"
+TENANT_ID = "d8fe6df3-c89e-4fa6-a2f8-cfcc31dffb1c"
+
+class OneNoteExporter:
+    def __init__(self, output_dir="./onenote_export"):
+        self.output_dir = Path(output_dir)
+        self.access_token = None
+        self.html_converter = html2text.HTML2Text()
+        self.html_converter.ignore_links = False
+        self.html_converter.body_width = 0  # Don't wrap lines
+        self.export_stats = {
+            'notebooks_exported': 0,
+            'notebooks_skipped': 0,
+            'pages_exported': 0,
+            'errors': []
+        }
+        
+    def authenticate(self):
+        """Authenticate with Microsoft Graph"""
+        print("🔐 Authenticating with Microsoft Graph...")
+        
+        app = PublicClientApplication(
+            CLIENT_ID,
+            authority=f"https://login.microsoftonline.com/{TENANT_ID}"
+        )
+        
+        # Try cached token first
+        accounts = app.get_accounts()
+        if accounts:
+            print("📋 Using cached authentication...")
+            result = app.acquire_token_silent(
+                scopes=["User.Read", "Notes.Read.All", "Sites.Read.All", "Files.Read.All"],
+                account=accounts[0]
+            )
+        else:
+            result = None
+        
+        # Get new token if needed
+        if not result:
+            print("🌐 Opening browser for authentication...")
+            result = app.acquire_token_interactive(
+                scopes=["User.Read", "Notes.Read.All", "Sites.Read.All", "Files.Read.All"]
+            )
+        
+        if "access_token" in result:
+            print("✅ Authentication successful!")
+            self.access_token = result["access_token"]
+            return True
+        else:
+            print(f"❌ Authentication failed: {result.get('error_description', 'Unknown error')}")
+            return False
+    
+    def make_graph_request(self, endpoint):
+        """Make authenticated request to Microsoft Graph"""
+        headers = {
+            'Authorization': f'Bearer {self.access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        url = f'https://graph.microsoft.com/v1.0{endpoint}'
+        
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json(), None
+            else:
+                error_msg = f"{response.status_code} - {response.text}"
+                return None, error_msg
+        except Exception as e:
+            return None, str(e)
+    
+    def make_graph_request_raw(self, endpoint):
+        """Make authenticated request for raw HTML content"""
+        headers = {
+            'Authorization': f'Bearer {self.access_token}',
+            'Accept': 'text/html'
+        }
+        
+        url = f'https://graph.microsoft.com/v1.0{endpoint}'
+        
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.text, None
+            else:
+                error_msg = f"{response.status_code} - {response.text}"
+                return None, error_msg
+        except Exception as e:
+            return None, str(e)
+    
+    def get_drive_onenote_files(self):
+        """Get OneNote files from drive search (workaround for rate-limited notebooks)"""
+        print("🔍 Searching for individual OneNote files via Drive API...")
+        
+        # Search for OneNote files
+        search_queries = ["name:OneNote"]
+        onenote_mime_types = [
+            'application/msonenote',
+            'application/onenote', 
+            'application/x-msonenote',
+            'application/vnd.ms-onenote'
+        ]
+        
+        all_files = []
+        
+        for query in search_queries:
+            endpoint = f"/me/drive/search(q='{query}')"
+            result, error = self.make_graph_request(endpoint)
+            
+            if result:
+                items = result.get('value', [])
+                print(f"   📋 Found {len(items)} search results")
+                
+                # Filter by OneNote MIME types
+                for item in items:
+                    file_type = item.get('file', {}).get('mimeType', '')
+                    if file_type in onenote_mime_types:
+                        all_files.append(item)
+                
+                print(f"   ✅ Found {len(all_files)} OneNote files")
+        
+        return all_files
+    
+    def try_alternative_notebook_access(self, notebook_info):
+        """Try alternative methods to access rate-limited personal notebooks"""
+        notebook = notebook_info['notebook']
+        notebook_name = notebook.get('displayName', 'Unknown')
+        notebook_id = notebook.get('id')
+        
+        print(f"      🔧 Trying alternative access methods for rate-limited notebook...")
+        
+        # Method 1: Try to get recent pages directly
+        print(f"         📄 Method 1: Getting recent pages...")
+        recent_pages_endpoint = f'/me/onenote/pages?$top=50&$orderby=lastModifiedDateTime desc'
+        result, error = self.make_graph_request(recent_pages_endpoint)
+        
+        if result:
+            pages = result.get('value', [])
+            print(f"         ✅ Found {len(pages)} recent pages")
+            
+            # Filter pages that belong to this notebook
+            notebook_pages = []
+            for page in pages:
+                # Check if page belongs to our notebook by checking the parent notebook
+                parent_notebook = page.get('parentNotebook', {})
+                if parent_notebook.get('id') == notebook_id:
+                    notebook_pages.append(page)
+            
+            print(f"         📓 {len(notebook_pages)} pages belong to target notebook")
+            
+            if notebook_pages:
+                return {
+                    'notebook': notebook,
+                    'site': 'Personal (Alternative Access)',
+                    'sections': [{
+                        'section': {'displayName': 'Recent Pages (Rate-Limited Workaround)', 'id': 'recent'},
+                        'pages': notebook_pages[:20],  # Limit to 20 most recent
+                        'site_id': None
+                    }]
+                }
+        
+        # Method 2: Try drive search files
+        print(f"         🔍 Method 2: Using drive search results...")
+        drive_files = self.get_drive_onenote_files()
+        
+        if drive_files:
+            print(f"         📁 Found {len(drive_files)} OneNote files in drive")
+            
+            # Try to convert drive files to page-like objects
+            drive_pages = []
+            for file_item in drive_files[:10]:  # Limit to first 10 files
+                # Create a fake page object from drive file
+                fake_page = {
+                    'id': file_item.get('id'),
+                    'title': file_item.get('name', 'Unknown File'),
+                    'driveItem': file_item,  # Store original drive item
+                    'isDriveFile': True  # Flag to handle differently
+                }
+                drive_pages.append(fake_page)
+            
+            return {
+                'notebook': notebook,
+                'site': 'Personal (Drive Files)',
+                'sections': [{
+                    'section': {'displayName': 'Individual OneNote Files', 'id': 'drive_files'},
+                    'pages': drive_pages,
+                    'site_id': None
+                }]
+            }
+        
+        print(f"         ❌ All alternative methods failed")
+        return None
+    
+    def get_drive_file_content(self, file_id, file_item=None):
+        """Try to get content from a OneNote file via multiple methods"""
+        print(f"            🔍 Attempting to access drive file content...")
+        
+        # Method 1: Try SharePoint OneNote API access if this is a SharePoint-hosted file
+        if file_item:
+            web_url = file_item.get('webUrl', '')
+            file_name = file_item.get('name', 'Unknown')
+            
+            if 'sharepoint.com' in web_url:
+                print(f"            🌐 SharePoint OneNote file detected: {file_name}")
+                
+                # Extract SharePoint site information
+                site_info = self.extract_sharepoint_site_info(web_url)
+                if site_info:
+                    site_hostname = site_info['hostname']
+                    site_path = site_info['path']
+                    
+                    print(f"            🏢 Trying SharePoint OneNote API access: {site_hostname}{site_path}")
+                    
+                    # Get site ID first
+                    site_endpoint = f'/sites/{site_hostname}:{site_path}'
+                    site_result, site_error = self.make_graph_request(site_endpoint)
+                    
+                    if site_result:
+                        site_id = site_result.get('id')
+                        print(f"            ✅ Got SharePoint site ID: {site_id[:20]}...")
+                        
+                        # Try to find OneNote notebooks in this SharePoint site
+                        notebooks_endpoint = f'/sites/{site_id}/onenote/notebooks'
+                        notebooks_result, notebooks_error = self.make_graph_request(notebooks_endpoint)
+                        
+                        if notebooks_result:
+                            notebooks = notebooks_result.get('value', [])
+                            print(f"            📚 Found {len(notebooks)} OneNote notebooks in SharePoint site")
+                            
+                            # Look for a notebook that might contain our file
+                            for notebook in notebooks:
+                                notebook_name = notebook.get('displayName', '')
+                                notebook_id = notebook.get('id')
+                                
+                                # Get sections from this notebook
+                                sections_endpoint = f'/sites/{site_id}/onenote/notebooks/{notebook_id}/sections'
+                                sections_result, sections_error = self.make_graph_request(sections_endpoint)
+                                
+                                if sections_result:
+                                    sections = sections_result.get('value', [])
+                                    print(f"            📁 Notebook '{notebook_name}' has {len(sections)} sections")
+                                    
+                                    # Get pages from each section
+                                    for section in sections[:3]:  # Limit to first 3 sections
+                                        section_id = section.get('id')
+                                        section_name = section.get('displayName', 'Unknown')
+                                        
+                                        pages_endpoint = f'/sites/{site_id}/onenote/sections/{section_id}/pages'
+                                        pages_result, pages_error = self.make_graph_request(pages_endpoint)
+                                        
+                                        if pages_result:
+                                            pages = pages_result.get('value', [])
+                                            print(f"            📄 Section '{section_name}' has {len(pages)} pages")
+                                            
+                                            if pages:
+                                                # Get content from the first page as sample
+                                                page = pages[0]
+                                                page_id = page.get('id')
+                                                page_title = page.get('title', 'Unknown')
+                                                
+                                                content_endpoint = f'/sites/{site_id}/onenote/pages/{page_id}/content'
+                                                content_result, content_error = self.make_graph_request_raw(content_endpoint)
+                                                
+                                                if content_result:
+                                                    print(f"            ✅ Successfully got OneNote page content from '{page_title}' ({len(content_result)} characters)")
+                                                    
+                                                    # Create a summary of all pages in this section
+                                                    summary_content = f"# {file_name} - OneNote Content\n\n"
+                                                    summary_content += f"**Source:** {notebook_name} > {section_name}\n"
+                                                    summary_content += f"**Pages found:** {len(pages)}\n\n"
+                                                    
+                                                    # Add first page content as sample
+                                                    summary_content += f"## Sample Page: {page_title}\n\n"
+                                                    markdown_content = self.html_to_markdown(content_result)
+                                                    summary_content += markdown_content[:2000]  # Limit to first 2000 chars
+                                                    
+                                                    if len(markdown_content) > 2000:
+                                                        summary_content += "\n\n*[Content truncated - full content available in OneNote]*"
+                                                    
+                                                    summary_content += f"\n\n**Web Access:** [Open in OneNote]({web_url})"
+                                                    
+                                                    return summary_content
+                        else:
+                            print(f"            ❌ Could not access OneNote notebooks: {notebooks_error}")
+                    else:
+                        print(f"            ❌ Could not access SharePoint site: {site_error}")
+        
+        # Method 2: Provide web URL as fallback content
+        print(f"            📋 Providing web URL as fallback...")
+        if file_item:
+            web_url = file_item.get('webUrl', '')
+            file_name = file_item.get('name', 'Unknown')
+            
+            fallback_content = f"""# {file_name}
+
+**This OneNote file could not be directly accessed via the Microsoft Graph API.**
+
+You can access this file directly via the web interface:
+[Open in OneNote Online]({web_url})
+
+**File Information:**
+- Name: {file_name}
+- Location: {web_url}
+- Type: OneNote File (.one)
+
+**Note:** This may be due to SharePoint permissions or the >5,000 items limitation affecting the OneNote API.
+
+To access the full content:
+1. Click the link above to open in OneNote Online
+2. Copy the content you need
+3. Or export sections individually from OneNote
+"""
+            return fallback_content
+        
+        return None
+
+    def get_sharepoint_notebooks(self):
+        """Get all accessible SharePoint notebooks"""
+        print("🌐 Discovering SharePoint notebooks...")
+        
+        # Get followed SharePoint sites
+        result, error = self.make_graph_request('/me/followedSites')
+        if not result:
+            print(f"❌ Could not get SharePoint sites: {error}")
+            return []
+        
+        sites = result.get('value', [])
+        print(f"📋 Found {len(sites)} SharePoint sites")
+        
+        all_notebooks = []
+        
+        for site in sites:
+            site_name = site.get('displayName', 'Unknown')
+            site_id = site.get('id')
+            
+            if site_id:
+                # Get OneNote notebooks for this site
+                endpoint = f'/sites/{site_id}/onenote/notebooks'
+                result, error = self.make_graph_request(endpoint)
+                
+                if result:
+                    site_notebooks = result.get('value', [])
+                    if site_notebooks:
+                        print(f"   🌐 {site_name}: {len(site_notebooks)} notebooks")
+                        for notebook in site_notebooks:
+                            all_notebooks.append({
+                                'notebook': notebook,
+                                'site': site_name,
+                                'site_id': site_id,
+                                'type': 'sharepoint'
+                            })
+                    else:
+                        print(f"   📭 {site_name}: No notebooks")
+        
+        print(f"✅ Total accessible notebooks: {len(all_notebooks)}")
+        return all_notebooks
+    
+    def get_personal_notebooks(self):
+        """Attempt to get personal notebooks (may fail due to 5000+ limit)"""
+        print("📓 Checking personal notebooks...")
+        
+        result, error = self.make_graph_request('/me/onenote/notebooks')
+        
+        if result:
+            notebooks = result.get('value', [])
+            print(f"✅ Found {len(notebooks)} personal notebooks")
+            return [{'notebook': nb, 'site': 'Personal', 'site_id': None, 'type': 'personal'} for nb in notebooks]
+        else:
+            if "5,000" in str(error) or "10008" in str(error):
+                print("⚠️  Personal notebooks skipped: >5,000 items limitation")
+                self.export_stats['errors'].append("Personal notebooks rate-limited (>5000 items)")
+            else:
+                print(f"❌ Failed to get personal notebooks: {error}")
+                self.export_stats['errors'].append(f"Personal notebooks error: {error}")
+            return []
+    
+    def get_notebook_structure(self, notebook_info):
+        """Get all sections and pages from a notebook"""
+        notebook = notebook_info['notebook']
+        site_id = notebook_info['site_id']
+        notebook_id = notebook.get('id')
+        notebook_name = notebook.get('displayName', 'Unknown')
+        
+        if not notebook_id:
+            return None
+        
+        # Get sections
+        if site_id:
+            sections_endpoint = f'/sites/{site_id}/onenote/notebooks/{notebook_id}/sections'
+        else:
+            sections_endpoint = f'/me/onenote/notebooks/{notebook_id}/sections'
+        
+        result, error = self.make_graph_request(sections_endpoint)
+        
+        if not result:
+            if "5,000" in str(error) or "10008" in str(error):
+                print(f"      ⚠️  Notebook rate-limited (>5000 items), trying alternative access...")
+                # Try alternative methods for rate-limited notebooks
+                alternative_structure = self.try_alternative_notebook_access(notebook_info)
+                if alternative_structure:
+                    print(f"      ✅ Successfully accessed via alternative method!")
+                    return alternative_structure
+                else:
+                    print(f"      ❌ All alternative access methods failed")
+                    self.export_stats['notebooks_skipped'] += 1
+                    return None
+            else:
+                print(f"      ❌ Failed to get sections: {error}")
+                return None
+        
+        sections = result.get('value', [])
+        notebook_structure = {
+            'notebook': notebook,
+            'site': notebook_info['site'],
+            'sections': []
+        }
+        
+        for section in sections:
+            section_name = section.get('displayName', 'Unnamed Section')
+            section_id = section.get('id')
+            
+            if section_id:
+                # Get pages from section
+                if site_id:
+                    pages_endpoint = f'/sites/{site_id}/onenote/sections/{section_id}/pages'
+                else:
+                    pages_endpoint = f'/me/onenote/sections/{section_id}/pages'
+                
+                pages_result, pages_error = self.make_graph_request(pages_endpoint)
+                
+                if pages_result:
+                    pages = pages_result.get('value', [])
+                    notebook_structure['sections'].append({
+                        'section': section,
+                        'pages': pages,
+                        'site_id': site_id
+                    })
+        
+        return notebook_structure
+    
+    def clean_filename(self, name):
+        """Clean filename for filesystem compatibility"""
+        # Remove invalid characters and limit length
+        cleaned = re.sub(r'[<>:"/\\|?*]', '_', name)
+        cleaned = re.sub(r'\s+', '_', cleaned)
+        return cleaned[:100]  # Limit length
+    
+    def html_to_markdown(self, html_content):
+        """Convert HTML content to markdown"""
+        try:
+            # Parse HTML and extract main content
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            # Get body content if available, otherwise use whole content
+            body = soup.find('body')
+            if body:
+                content = str(body)
+            else:
+                content = str(soup)
+            
+            # Convert to markdown
+            markdown = self.html_converter.handle(content)
+            
+            # Clean up extra whitespace
+            markdown = re.sub(r'\n\s*\n\s*\n', '\n\n', markdown)
+            markdown = markdown.strip()
+            
+            return markdown
+            
+        except Exception as e:
+            print(f"      ⚠️  HTML conversion error: {e}")
+            # Fallback: return plain text
+            soup = BeautifulSoup(html_content, 'html.parser')
+            return soup.get_text()
+    
+    def detect_content_language(self, content):
+        """Detect if content appears to be code and what language"""
+        # Simple heuristics for common code patterns
+        code_patterns = {
+            'python': [r'def\s+\w+\(', r'import\s+\w+', r'from\s+\w+\s+import', r'if\s+__name__\s*=='],
+            'javascript': [r'function\s+\w+\(', r'var\s+\w+\s*=', r'const\s+\w+\s*=', r'\.js'],
+            'sql': [r'SELECT\s+', r'FROM\s+', r'WHERE\s+', r'INSERT\s+INTO'],
+            'bash': [r'#!/bin/bash', r'\$\w+', r'echo\s+'],
+            'powershell': [r'Get-\w+', r'\$\w+\s*=', r'Write-Host'],
+            'config': [r'^\w+\s*=', r'^\[.*\]$', r'\.conf$', r'\.ini$']
+        }
+        
+        content_lower = content.lower()
+        
+        for language, patterns in code_patterns.items():
+            for pattern in patterns:
+                if re.search(pattern, content, re.IGNORECASE | re.MULTILINE):
+                    return language
+        
+        # Check if it looks like code (lots of brackets, semicolons, etc.)
+        code_chars = len(re.findall(r'[{}();,\[\]]', content))
+        if code_chars > len(content) * 0.1:  # More than 10% code-like characters
+            return 'text'  # Generic code
+        
+        return 'markdown'  # Default to markdown
+    
+    def create_notebook_file(self, notebook_structure):
+        """Create VS Code notebook file with XML cell format"""
+        notebook = notebook_structure['notebook']
+        site = notebook_structure['site']
+        
+        notebook_name = notebook.get('displayName', 'Unknown')
+        clean_name = self.clean_filename(notebook_name)
+        
+        # Create directory structure
+        site_dir = self.output_dir / self.clean_filename(site)
+        site_dir.mkdir(parents=True, exist_ok=True)
+        
+        notebook_file = site_dir / f"{clean_name}.ipynb"
+        
+        print(f"   📓 Creating: {notebook_file}")
+        
+        # Create notebook content
+        cells_xml = []
+        
+        # Add header cell
+        header_content = f"# {notebook_name}\n\n**Site:** {site}  \n**Exported:** {self.get_current_date()}  \n**Source:** OneNote via Microsoft Graph API\n\n---"
+        cells_xml.append(f'<VSCode.Cell language="markdown">\n{header_content}\n</VSCode.Cell>')
+        
+        total_pages = 0
+        
+        for section_info in notebook_structure['sections']:
+            section = section_info['section']
+            pages = section_info['pages']
+            site_id = section_info['site_id']
+            
+            section_name = section.get('displayName', 'Unnamed Section')
+            total_pages += len(pages)
+            
+            if pages:
+                # Add section header
+                section_header = f"## {section_name}\n\n**Pages in this section:** {len(pages)}"
+                cells_xml.append(f'<VSCode.Cell language="markdown">\n{section_header}\n</VSCode.Cell>')
+                
+                # Export up to 10 pages per section (to keep files manageable)
+                pages_to_export = pages[:10]
+                if len(pages) > 10:
+                    print(f"      ℹ️  Limiting to first 10 pages (of {len(pages)})")
+                
+                for page in pages_to_export:
+                    page_title = page.get('title', 'Untitled Page') or 'Untitled Page'
+                    page_id = page.get('id')
+                    
+                    if page_id:
+                        # Check if this is a drive file (alternative access)
+                        if page.get('isDriveFile'):
+                            print(f"         📁 Processing drive file: {page_title}")
+                            
+                            # Get content from drive file
+                            drive_item = page.get('driveItem')
+                            html_content = self.get_drive_file_content(page_id, drive_item)
+                            
+                            if html_content:
+                                # For drive files, content might not be HTML
+                                if html_content.startswith('<html'):
+                                    markdown_content = self.html_to_markdown(html_content)
+                                else:
+                                    # It's already text content
+                                    markdown_content = html_content
+                                
+                                content_language = self.detect_content_language(markdown_content)
+                                page_cell_content = f"### {page_title}\n\n{markdown_content}"
+                                cells_xml.append(f'<VSCode.Cell language="{content_language}">\n{page_cell_content}\n</VSCode.Cell>')
+                                self.export_stats['pages_exported'] += 1
+                            else:
+                                print(f"         ❌ Failed to get content for drive file: {page_title}")
+                                error_cell = f"### {page_title}\n\n**Error:** Could not retrieve drive file content"
+                                cells_xml.append(f'<VSCode.Cell language="markdown">\n{error_cell}\n</VSCode.Cell>')
+                        else:
+                            # Standard OneNote page
+                            print(f"         📝 Processing page: {page_title}")
+                            
+                            # Get page content
+                            if site_id:
+                                content_endpoint = f'/sites/{site_id}/onenote/pages/{page_id}/content'
+                            else:
+                                content_endpoint = f'/me/onenote/pages/{page_id}/content'
+                            
+                            html_content, error = self.make_graph_request_raw(content_endpoint)
+                            
+                            if html_content:
+                                # Convert to markdown
+                                markdown_content = self.html_to_markdown(html_content)
+                                
+                                # Detect content type
+                                content_language = self.detect_content_language(markdown_content)
+                                
+                                # Create page cell
+                                page_cell_content = f"### {page_title}\n\n{markdown_content}"
+                                cells_xml.append(f'<VSCode.Cell language="{content_language}">\n{page_cell_content}\n</VSCode.Cell>')
+                                
+                                self.export_stats['pages_exported'] += 1
+                            else:
+                                print(f"         ❌ Failed to get content for page: {page_title}")
+                                error_cell = f"### {page_title}\n\n**Error:** Could not retrieve page content\n```\n{error}\n```"
+                                cells_xml.append(f'<VSCode.Cell language="markdown">\n{error_cell}\n</VSCode.Cell>')
+        
+        # Write notebook file
+        notebook_content = f'''<!-- filepath: {notebook_file} -->
+{chr(10).join(cells_xml)}
+'''
+        
+        with open(notebook_file, 'w', encoding='utf-8') as f:
+            f.write(notebook_content)
+        
+        print(f"      ✅ Exported {total_pages} pages to {notebook_file}")
+        self.export_stats['notebooks_exported'] += 1
+        
+        return notebook_file
+    
+    def get_current_date(self):
+        """Get current date for export metadata"""
+        from datetime import datetime
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def export_all_notebooks(self):
+        """Export all accessible OneNote notebooks"""
+        print("🚀 Starting OneNote Export")
+        print("=" * 50)
+        
+        if not self.authenticate():
+            return False
+        
+        # Create output directory
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"📁 Export directory: {self.output_dir.absolute()}")
+        
+        # Get all accessible notebooks
+        sharepoint_notebooks = self.get_sharepoint_notebooks()
+        personal_notebooks = self.get_personal_notebooks()
+        
+        all_notebooks = sharepoint_notebooks + personal_notebooks
+        
+        if not all_notebooks:
+            print("❌ No accessible notebooks found!")
+            return False
+        
+        print(f"\n📚 Exporting {len(all_notebooks)} notebooks...")
+        
+        # Export each notebook
+        for i, notebook_info in enumerate(all_notebooks, 1):
+            notebook = notebook_info['notebook']
+            notebook_name = notebook.get('displayName', 'Unknown')
+            site = notebook_info['site']
+            
+            print(f"\n{i}/{len(all_notebooks)} 🔄 Processing: {notebook_name} (from {site})")
+            
+            # Get notebook structure
+            structure = self.get_notebook_structure(notebook_info)
+            
+            if structure:
+                # Create notebook file
+                self.create_notebook_file(structure)
+            else:
+                print(f"      ⚠️  Skipped notebook")
+        
+        # Print export summary
+        self.print_export_summary()
+        
+        return True
+    
+    def print_export_summary(self):
+        """Print final export statistics"""
+        print("\n" + "=" * 50)
+        print("📊 EXPORT SUMMARY")
+        print("=" * 50)
+        print(f"✅ Notebooks exported: {self.export_stats['notebooks_exported']}")
+        print(f"⚠️  Notebooks skipped: {self.export_stats['notebooks_skipped']}")
+        print(f"📄 Pages exported: {self.export_stats['pages_exported']}")
+        print(f"📁 Export location: {self.output_dir.absolute()}")
+        
+        if self.export_stats['errors']:
+            print(f"\n⚠️  Issues encountered:")
+            for error in self.export_stats['errors']:
+                print(f"   • {error}")
+        
+        print(f"\n🎉 Export completed! Check {self.output_dir} for your OneNote notebooks.")
+        print("💡 Import these .ipynb files into VS Code to view your OneNote content.")
+
+    def extract_sharepoint_site_info(self, web_url):
+        """Extract SharePoint site hostname and path from a web URL"""
+        try:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(web_url)
+            
+            # Example: https://composeit-my.sharepoint.com/personal/arvid_carlander_compose_se/
+            if 'sharepoint.com' in parsed.netloc:
+                hostname = parsed.netloc
+                path_parts = parsed.path.split('/')
+                
+                # Look for /personal/ or /sites/ in the path
+                if len(path_parts) >= 3:
+                    if path_parts[1] == 'personal' and len(path_parts) >= 3:
+                        # Personal OneDrive: /personal/username/
+                        path = f"/{path_parts[1]}/{path_parts[2]}"
+                        return {
+                            'hostname': hostname,
+                            'path': path,
+                            'type': 'personal'
+                        }
+                    elif path_parts[1] == 'sites' and len(path_parts) >= 3:
+                        # Team site: /sites/sitename/
+                        path = f"/{path_parts[1]}/{path_parts[2]}"
+                        return {
+                            'hostname': hostname,
+                            'path': path,
+                            'type': 'site'
+                        }
+            
+            return None
+        except Exception as e:
+            print(f"            ⚠️  Could not parse SharePoint URL: {e}")
+            return None
+
+def main():
+    """Main export function"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Export OneNote notebooks to VS Code format')
+    parser.add_argument('--output', '-o', default='./onenote_export', 
+                       help='Output directory for exported notebooks')
+    
+    args = parser.parse_args()
+    
+    exporter = OneNoteExporter(output_dir=args.output)
+    success = exporter.export_all_notebooks()
+    
+    if success:
+        print("\n🚀 Export successful!")
+        return 0
+    else:
+        print("\n❌ Export failed!")
+        return 1
+
+if __name__ == "__main__":
+    exit(main())

@@ -40,6 +40,45 @@ if [ ! -f ~/.config/Code/User/settings.json ] || [ "$1" == "--force" ]; then
         "editor.codeActionsOnSave": {
             "source.organizeImports": true
         }
+    },
+    
+    // Git settings
+    "git.autofetch": true,
+    
+    // File modification warning settings
+    "modifyFileWarning.includedFileGlobs": [
+        "**/original/**"
+    ],
+    
+    // Nix environment selector
+    "nixEnvSelector.useFlakes": true,
+    
+    // GitHub Copilot settings
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "github.copilot.nextEditSuggestions.fixes": true,
+    "github.copilot.chat.codesearch.enabled": true,
+    "github.copilot.chat.agent.thinkingTool": true,
+    "github.copilot.chat.editor.temporalContext.enabled": true,
+    "github.copilot.chat.edits.temporalContext.enabled": true,
+    "github.copilot.chat.generateTests.codeLens": true,
+    "github.copilot.chat.languageContext.fix.typescript.enabled": true,
+    "github.copilot.chat.languageContext.inline.typescript.enabled": true,
+    "github.copilot.chat.languageContext.typescript.enabled": true,
+    "github.copilot.chat.search.keywordSuggestions": true,
+    
+    // MCP (Model Context Protocol) settings
+    "mcp": {
+        "servers": {
+            "context7": {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@upstash/context7-mcp"
+                ],
+                "env": {}
+            }
+        },
+        "inputs": []
     }
 }
 EOF

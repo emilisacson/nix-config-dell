@@ -1,0 +1,21 @@
+Opening in existing browser session.
+🔍 Testing Current User and Drive Access
+==================================================
+🔐 Authenticating with Microsoft Graph...
+🌐 Opening browser for authentication...
+✅ Authentication successful!
+
+👤 Getting current user info...
+✅ Authenticated as: Emil Isacson (Emil.isacson@compose.se)
+
+💾 Getting personal drive info...
+✅ Personal drive: Dokument
+   Owner: Emil Isacson
+   URL: https://composeit-my.sharepoint.com/personal/emil_isacson_compose_se/Documents
+
+📂 Searching YOUR personal drive for OneNote files...
+❌ Could not search personal drive: 400 - {"error":{"code":"invalidRequest","message":"A potentially dangerous Request.Path value was detected from the client (*).","innerError":{"code":"badArgument","date":"2025-06-13T14:14:40","request-id":"3a0715e5-73ba-42b8-83fd-02da9317151d","client-request-id":"3a0715e5-73ba-42b8-83fd-02da9317151d"}}}
+
+🔍 Checking personal notebooks directly...
+✅ Found 1 personal notebooks
+   📓 Emil @ Compose IT Nordic AB

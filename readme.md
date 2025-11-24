@@ -54,12 +54,31 @@ After running detection on a Dell Latitude 7410:
 Applications automatically adapt to detected hardware:
 
 ```nix
-# Example: OBS Studio with GPU-specific configuration
-programs.obs-studio = {
-  enable = true;
-  package = if config.systemSpecs.hasNvidiaGPU 
-    then nixgl.nixGLNvidia pkgs.obs-studio
-    else nixgl.nixGLIntel pkgs.obs-studio;
+# Example: OBS Studio with GPU-specific nixGL configuration
+home.packages = with pkgs; [
+  obs-studio
+  
+  # Include appropriate nixGL packages based on hardware
+] ++ lib.optionals (config.systemSpecs.hasNvidiaGPU or false) [
+  # Use explicit NVIDIA version to avoid auto-detection issues
+  (nixgl.override { nvidiaVersion = "575.57.08"; }).auto.nixGLNvidia
+] ++ lib.optionals (config.systemSpecs.hasIntelGPU or false) [
+  nixgl.nixGLIntel
+];
+
+# Create wrapper script for hardware-accelerated launch
+home.file.".local/bin/obs-nixgl" = {
+  text = ''
+    #!/usr/bin/env bash
+    if command -v nixGLNvidia-575.57.08 &> /dev/null; then
+        exec nixGLNvidia-575.57.08 obs "$@"
+    elif command -v nixGLIntel &> /dev/null; then
+        exec nixGLIntel obs "$@"
+    else
+        exec obs "$@"
+    fi
+  '';
+  executable = true;
 };
 ```
 
@@ -94,6 +113,27 @@ programs.obs-studio = {
 - ✅ **Storage Models**: Proper device model detection instead of "null" values
 - ✅ **Network Detection**: Fixed wireless interface detection (wlo1, etc.)
 - ✅ **JSON Architecture**: Migrated to reliable two-phase detection system
+- ✅ **nixGL NVIDIA Fix**: Resolved auto-detection issues by using explicit driver versions
+- ✅ **Graphics Acceleration**: Fixed laggy animations in Brave, Obsidian, and OBS Studio
+
+### nixGL Graphics Troubleshooting
+
+If you encounter graphics issues with applications:
+
+1. **Check NVIDIA driver version**:
+   ```bash
+   nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits
+   ```
+
+2. **Update nixGL configuration** with your specific driver version:
+   ```nix
+   (nixgl.override { nvidiaVersion = "575.57.08"; }).auto.nixGLNvidia
+   ```
+
+3. **Use wrapper scripts** for desktop integration:
+   - Applications include `app-nixgl` wrapper scripts
+   - Desktop entries automatically use hardware acceleration
+   - Example: `brave-nixgl`, `obsidian-nixgl`, `obs-nixgl`
 
 ## 🚀 **Ready for Multi-System Use**
 
@@ -139,5 +179,39 @@ dconf dump /org/gnome/shell/extensions/dash-to-panel/
 flatpak override --user --env=GTK_THEME=Adwaita:dark org.gnome.Evolution
 # Reset with: flatpak override --user --reset org.gnome.Evolution
 ```
+
+### Additional Resources
+- [Fedora 42 Post Install Guide](https://github.com/devangshekhawat/Fedora-42-Post-Install-Guide#nvidia-drivers)
+
+## 🔧 Post-Installation Requirements
+
+Some system-level components need to be installed after a fresh OS install or when rebuilding:
+
+### Keyboard Configuration (keyd for Keychron)
+
+If you use a Keychron Q11 keyboard and want full SVDVORAK layout with QWERTY Ctrl shortcuts:
+
+```bash
+~/.nix-config/extras/setup-keyd.sh
+```
+
+This installs `keyd` (a system-wide keyboard remapping daemon) and configures it so that:
+
+**Keychron Q11 (when connected):**
+- Normal typing: Full SVDVORAK layout (å, ä, ö and all dvorak key positions)
+- Ctrl+C/V/X/Z: Work at QWERTY positions (so muscle memory works)
+- All other Ctrl combinations use QWERTY positions
+
+**Laptop keyboard (built-in):**
+- Always Swedish QWERTY (unaffected by keyd)
+- No remapping applied
+
+**Technical details:**
+- keyd only applies to Keychron Q11 (device IDs: 3434:01e1:*)
+- GNOME layout set to Swedish QWERTY (`se`)
+- keyd provides SVDVORAK character mapping for Keychron
+- Uses `layer()` to switch to QWERTY when Ctrl is held
+
+**Note:** This is required because Wayland doesn't support XKB group switching that was used previously. The new solution provides full SVDVORAK layout on the external keyboard while keeping the laptop keyboard as standard Swedish QWERTY.
 
 </details>

@@ -402,18 +402,34 @@ Example of application adapting to detected hardware:
 
 ```nix
 # applications/obs-studio.nix
-{ config, pkgs, lib, nixgl, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   home.packages = with pkgs; [
-    (if config.systemSpecs.hasNvidiaGPU then
-      # Use NVIDIA-optimized OBS with hardware encoding
-      nixgl.nixGLNvidia obs-studio
-    else
-      # Use standard OBS with software encoding
-      nixgl.nixGLIntel obs-studio
-    )
+    obs-studio
+    
+    # Include appropriate nixGL packages based on detected hardware
+  ] ++ lib.optionals config.systemSpecs.hasNvidiaGPU [
+    # Use explicit NVIDIA version to avoid auto-detection issues
+    (nixgl.override { nvidiaVersion = "575.57.08"; }).auto.nixGLNvidia
+  ] ++ lib.optionals config.systemSpecs.hasIntelGPU [
+    nixgl.nixGLIntel
   ];
+
+  # Create wrapper script for hardware-accelerated launch
+  home.file.".local/bin/obs-nixgl" = {
+    text = ''
+      #!/usr/bin/env bash
+      if command -v nixGLNvidia-575.57.08 &> /dev/null; then
+          exec nixGLNvidia-575.57.08 obs "$@"
+      elif command -v nixGLIntel &> /dev/null; then
+          exec nixGLIntel obs "$@"
+      else
+          exec obs "$@"
+      fi
+    '';
+    executable = true;
+  };
 
   # OBS configuration based on detected hardware
   home.file.".config/obs-studio/basic/profiles/main/basic.ini".text = ''

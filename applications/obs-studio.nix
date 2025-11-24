@@ -7,12 +7,13 @@
       # Regular OBS Studio package
       obs-studio
 
-      # nixGL wrappers based on detected hardware
+      # nixGL wrappers - include both Intel and NVIDIA with explicit version
       nixgl.auto.nixGLDefault # Auto-detect (always included)
-    ] ++ lib.optionals config.systemSpecs.hasNvidiaGPU [
-      nixgl.auto.nixGLNvidia # Only include if Nvidia GPU detected
     ] ++ lib.optionals config.systemSpecs.hasIntelGPU [
-      nixgl.nixGLIntel # Only include if Intel GPU detected
+      nixgl.nixGLIntel # Include Intel support
+    ] ++ lib.optionals config.systemSpecs.hasNvidiaGPU [
+      # Use explicit NVIDIA version to avoid auto-detection issues
+      (nixgl.override { nvidiaVersion = "575.64.03"; }).auto.nixGLNvidia
     ];
 
   # Create a wrapper script for OBS Studio with nixGL
@@ -21,8 +22,17 @@
       #!/usr/bin/env bash
       # OBS Studio launcher with nixGL for graphics support
 
-      # Try to detect the best nixGL wrapper to use
-      if command -v nixGLDefault &> /dev/null; then
+      # Try to detect the best nixGL wrapper to use (prefer specific NVIDIA version that works)
+      if command -v nixGLNvidia-575.64.03 &> /dev/null; then
+          echo "Using nixGLNvidia-575.64.03 for OBS Studio..."
+          exec nixGLNvidia-575.64.03 obs "$@"
+      elif command -v nixGLNvidia &> /dev/null; then
+          echo "Using nixGLNvidia for OBS Studio..."
+          exec nixGLNvidia obs "$@"
+      elif command -v nixGLNvidia-570.153.02 &> /dev/null; then
+          echo "Using nixGLNvidia-570.153.02 for OBS Studio..."
+          exec nixGLNvidia-570.153.02 obs "$@"
+      elif command -v nixGLDefault &> /dev/null; then
           echo "Using nixGLDefault (auto-detect) for OBS Studio..."
           exec nixGLDefault obs "$@"
       elif command -v nixGLNvidia &> /dev/null; then

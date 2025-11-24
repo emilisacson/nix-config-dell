@@ -12,12 +12,13 @@ in lib.mkIf enableObsidian {
     [
       obsidian
 
-      # nixGL wrappers based on detected hardware (same as OBS approach)
+      # nixGL wrappers - include both Intel and NVIDIA with explicit version
       nixgl.auto.nixGLDefault # Auto-detect (always included)
-    ] ++ lib.optionals config.systemSpecs.hasNvidiaGPU [
-      nixgl.auto.nixGLNvidia # Only include if Nvidia GPU detected
-    ] ++ lib.optionals config.systemSpecs.hasIntelGPU [
-      nixgl.nixGLIntel # Only include if Intel GPU detected
+    ] ++ lib.optionals (config.systemSpecs.hasIntelGPU or false) [
+      nixgl.nixGLIntel # Include Intel support
+    ] ++ lib.optionals (config.systemSpecs.hasNvidiaGPU or false) [
+      # Use explicit NVIDIA version to avoid auto-detection issues
+      (nixgl.override { nvidiaVersion = "575.64.03"; }).auto.nixGLNvidia
     ];
 
   # Wrapper script to launch Obsidian with nixGL
@@ -26,8 +27,17 @@ in lib.mkIf enableObsidian {
       #!/usr/bin/env bash
       # Obsidian launcher with nixGL for graphics support
 
-      # Try to detect the best nixGL wrapper to use (same logic as OBS)
-      if command -v nixGLDefault &> /dev/null; then
+      # Try to detect the best nixGL wrapper to use (prefer specific NVIDIA version that works)
+      if command -v nixGLNvidia-575.64.03 &> /dev/null; then
+          echo "Using nixGLNvidia-575.64.03 for Obsidian..."
+          exec nixGLNvidia-575.64.03 obsidian "$@"
+      elif command -v nixGLNvidia &> /dev/null; then
+          echo "Using nixGLNvidia for Obsidian..."
+          exec nixGLNvidia obsidian "$@"
+      elif command -v nixGLNvidia-570.153.02 &> /dev/null; then
+          echo "Using nixGLNvidia-570.153.02 for Obsidian..."
+          exec nixGLNvidia-570.153.02 obsidian "$@"
+      elif command -v nixGLDefault &> /dev/null; then
           echo "Using nixGLDefault (auto-detect) for Obsidian..."
           exec nixGLDefault obsidian "$@"
       elif command -v nixGLNvidia &> /dev/null; then

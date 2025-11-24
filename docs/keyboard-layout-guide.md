@@ -396,6 +396,31 @@ cd ~/.nix-config && nix run .#homeConfigurations.$USER.activationPackage
 sudo localectl set-keymap se
 ```
 
+#### Problem: Custom SVDVORAK Ctrl Overlay Not Working
+
+**Symptoms**: After running the `setup-custom-keyboard.sh` script, the Ctrl key overlay (holding Ctrl to temporarily access Swedish QWERTY positions while in SVDVORAK mode) is not working.
+
+**Root Cause**: Sometimes the XKB state can get corrupted or the custom layout compilation doesn't take effect immediately.
+
+**Solutions**:
+```bash
+# Method 1: Manually recompile the custom XKB layout
+xkbcomp ~/.nix-config/extras/custom-keyboard-layout.xkb $DISPLAY
+
+# Method 2: Re-run the setup script
+~/.nix-config/extras/setup-custom-keyboard.sh
+
+# Method 3: Test if the overlay is working
+# In SVDVORAK mode, Ctrl+C should be accessible from the Swedish QWERTY 'c' position
+# rather than the SVDVORAK 'j' position
+
+# Method 4: Check if the custom layout was applied correctly
+xkbcomp $DISPLAY - | grep -A5 -B5 "key <LCTL>\|key <RCTL>"
+# Should show SetGroup actions for both Control keys
+```
+
+**Verification**: Test that Ctrl+C, Ctrl+V, etc. work from their Swedish QWERTY positions while in SVDVORAK mode.
+
 ### Step 3: Complete Reset Procedure
 
 If keyboard configuration is completely broken:

@@ -76,6 +76,13 @@ if [ ! -f ~/.config/Code/User/settings.json ] || [ "$1" == "--force" ]; then
                     "@upstash/context7-mcp"
                 ],
                 "env": {}
+            },
+            "browsermcp": {
+                "command": "npx",
+                "args": [
+                    "@browsermcp/mcp@latest"
+                ],
+                "env": {}
             }
         },
         "inputs": []

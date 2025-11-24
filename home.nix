@@ -25,10 +25,12 @@ in {
     ./desktop/graphics.nix # Import general graphics configuration
     ./desktop/nvidia.nix # Import NVIDIA-specific configuration
     ./desktop/performance.nix # Import system-specific performance configuration
+    ./desktop/hibernation.nix # Import hibernation configuration
     ./network/network.nix # Import network configuration
   ] ++ (if desktopEnvironment == "cosmic" then [
     inputs.cosmic-manager.homeManagerModules.default
     ./desktop/cosmic.nix
   ] else
     [ ./desktop/gnome.nix ]);
+
 }

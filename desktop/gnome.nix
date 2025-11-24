@@ -24,6 +24,7 @@
       show-battery-percentage = true;
       clock-format = "24h";
       clock-show-seconds = true;
+      enable-animations = true; # Keep enabled but optimize other settings
     };
 
     # Language and locale settings
@@ -39,9 +40,20 @@
       focus-mode = "click";
     };
 
-    # Power settings
+    # Power settings - enhanced for hibernation support
     "org/gnome/settings-daemon/plugins/power" = {
-      sleep-inactive-ac-type = "nothing";
+      sleep-inactive-ac-type =
+        "nothing"; # Don't auto-sleep on AC (handled by hibernation module)
+      sleep-inactive-battery-timeout = 1800; # 30 minutes on battery
+      sleep-inactive-battery-type =
+        "suspend"; # Default to suspend on battery (hibernation module will override if enabled)
+
+      # Power button and lid behavior (will be overridden by hibernation module if enabled)
+      power-button-action = "interactive";
+      idle-dim = true;
+
+      # Show battery percentage
+      show-battery-percentage = true;
     };
 
     # File manager settings
@@ -83,6 +95,12 @@
     # Set default browser
     "org/gnome/desktop/default-applications/web" = {
       browser = "brave-browser.desktop";
+    };
+
+    # Performance optimizations for better browser rendering
+    "org/gnome/mutter" = {
+      experimental-features = [ "scale-monitor-framebuffer" ];
+      check-alive-timeout = 60000; # Increase timeout for better performance
     };
   };
 }

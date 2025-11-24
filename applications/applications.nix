@@ -34,6 +34,8 @@ in {
     ./media-codecs.nix
     ./obsidian.nix
     ./onenote-graph.nix
+    ./windows-vm-pure.nix # Windows VM with pure QEMU approach
+    ./podman.nix
   ];
 
   home.packages = with pkgs;
@@ -44,5 +46,6 @@ in {
       tmux
       appeditor
       hwinfo
+      freerdp
     ] ++ currentSystemApps; # Add system-specific applications
 }

@@ -1,0 +1,31 @@
+// Swedish Dvorak variant with Ctrl modifier overlay to Swedish QWERTY
+// This allows typing Swedish Dvorak normally, but Ctrl+key combinations
+// use the Swedish QWERTY positions for easier shortcuts
+//
+// To install: sudo cp se_svdvorak_ctrl /usr/share/X11/xkb/symbols/
+// Then edit /usr/share/X11/xkb/rules/evdev.xml to add this variant
+// Or use: setxkbmap -layout se -variant svdvorak_ctrl
+
+partial alphanumeric_keys
+xkb_symbols "svdvorak_ctrl" {
+
+    include "se(svdvorak)"
+    name[Group1]= "Swedish (Dvorak, Ctrl overlay QWERTY)";
+
+    // The strategy: redefine keys with explicit Control modifier mappings
+    // Unfortunately, this doesn't fully work in Wayland either...
+    
+    // Top row - when Ctrl is held, use QWERTY positions
+    replace key <AD01> { [ odiaeresis, Odiaeresis, oslash, Oslash ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD02> { [ aring, Aring, dead_diaeresis, dead_abovering ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD03> { [ adiaeresis, Adiaeresis, ae, AE ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD04> { [ p, P, thorn, THORN ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD05> { [ y, Y, yen, yen ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD06> { [ f, F, ordfeminine, ordfeminine ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD07> { [ g, G, eng, ENG ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD08> { [ c, C, copyright, copyright ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD09> { [ r, R, registered, registered ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+    replace key <AD10> { [ l, L, lstroke, Lstroke ], actions[Group1] = [NoAction(), NoAction(), NoAction(), NoAction()] };
+
+    include "level3(ralt_switch)"
+};

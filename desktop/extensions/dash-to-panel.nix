@@ -16,7 +16,8 @@ let
       # Pure orientation-based logic: portrait = TOP, landscape = RIGHT
       position =
         if monitor.actual_orientation == "portrait" then "TOP" else "RIGHT";
-      size = 48; # Standard panel size
+
+      size = if monitor.actual_orientation == "landscape" then 93 else 48;
       length = -1;
       anchor = "MIDDLE";
     }) allMonitors;

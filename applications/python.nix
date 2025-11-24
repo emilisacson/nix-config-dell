@@ -37,6 +37,7 @@
         click
         rich
         watchdog
+        anytree # For tree visualization in hierarchy mapper
       ]))
     tk # Tk libraries
 

@@ -13,7 +13,7 @@ let
     (pkgs.vscode.override { isInsiders = true; }).overrideAttrs (oldAttrs: rec {
       src = (builtins.fetchTarball {
         url = "https://update.code.visualstudio.com/latest/linux-x64/insider";
-        sha256 = "sha256:0i4ndvmp5lwbjh1waxvs06rnr60psq0cbn511i7sj3l97vdiwvix";
+        sha256 = "sha256:12xxhkk7klmi3qdgnnd0581928r3xl1ldx9jrprmvaz01axrlrnk";
       });
       version = "latest";
       buildInputs = oldAttrs.buildInputs

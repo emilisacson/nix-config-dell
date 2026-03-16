@@ -23,8 +23,8 @@ sudo tee /etc/keyd/default.conf > /dev/null << 'KEYD_EOF'
 3434:01e1:839d521b
 
 [main]
-leftcontrol = layer(qwerty_shortcuts)
-rightcontrol = layer(qwerty_shortcuts)
+leftcontrol = control
+rightcontrol = control
 
 # SVDVORAK character mappings
 q = [
@@ -65,7 +65,7 @@ m = m
 . = v
 / = z
 
-[qwerty_shortcuts]
+[control]
 q = C-q
 w = C-w
 e = C-e

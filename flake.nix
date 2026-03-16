@@ -17,6 +17,7 @@
         home-manager.follows = "home-manager";
       };
     };
+    nix-flatpak = { url = "github:gmodena/nix-flatpak/?ref=latest"; };
     # Add nixGL for OpenGL support in non-NixOS systems
     nixgl = {
       url = "github:nix-community/nixGL";
@@ -25,7 +26,7 @@
   };
 
   outputs = inputs@{ nixpkgs, nixpkgs-unstable, home-manager, cosmic-manager
-    , nixgl, ... }:
+    , nix-flatpak, nixgl, ... }:
     let
       system = "x86_64-linux";
       username = "emil";
@@ -43,8 +44,11 @@
         home-manager.lib.homeManagerConfiguration {
           inherit pkgs;
           extraSpecialArgs = { inherit inputs unstable nixgl; };
-          modules =
-            [ ./home.nix cosmic-manager.homeManagerModules.cosmic-manager ];
+          modules = [
+            ./home.nix
+            cosmic-manager.homeManagerModules.cosmic-manager
+            nix-flatpak.homeManagerModules.nix-flatpak
+          ];
         };
     };
 }

@@ -1,6 +1,48 @@
 # VS Code Hash Update Log
 # Newest entries first. Timestamp Europe/Stockholm.
 
+2026-03-15T16:14:10+0100 insiders sha256:0i4ndvmp5lwbjh1waxvs06rnr60psq0cbn511i7sj3l97vdiwvix
+
+2026-03-05T13:41:15+0100 insiders sha256:0msz3dc338y25ngpinv95bgbldlr27wmi3f1b83krcc2jy2mr7dv
+
+2026-03-03T07:56:19+0100 insiders sha256:1bixyjzh9bba3s276a7vgab9qqkpm44vp332ilvzna6lil7k8pil
+
+2026-02-28T08:34:32+0100 insiders sha256:00vjsbklkr5a7f13vvq2ch3ca3brhi97nazwkbbja2yd477gaps2
+
+2026-02-19T07:17:01+0100 insiders sha256:0lw3ygqxkrds4pqz5hp4rn40w53qj0ymniygi9sr0pc6gm8mjaxq
+
+2026-02-17T07:52:58+0100 insiders sha256:1l1g7x3j063pqcaycpaxzprwy51q4z27dzqsqlq003vbf6c1d0l8
+
+2026-02-13T09:33:32+0100 insiders sha256:1cw038i79dmydjbar11dmv7mxphpf8v4k3lv4zbb3wxhbyc8p75n
+
+2026-02-12T07:40:16+0100 insiders sha256:0jclx10agk88vjgm6wgh7wxb04d2lhpa79bcxckb2ks47isfg3yb
+
+2026-02-09T07:50:04+0100 insiders sha256:1kxkxhap8ql5c5br1nfrxndj4zg7kpgykgjq9hv46l5rxbhhhpx7
+
+2026-01-30T09:43:34+0100 insiders sha256:1vh32w3wnra5hg4dy4av6zwgsn4dn8q3a9gf9j8d0mmckb5s65d5
+
+2026-01-30T09:37:51+0100 insiders sha256:1vh32w3wnra5hg4dy4av6zwgsn4dn8q3a9gf9j8d0mmckb5s65d5
+
+2026-01-19T19:21:39+0100 insiders sha256:139dirn203s7i8mz3gim3w94ibdnjwm91mjq7h4zibjzh840m2lh
+
+2026-01-19T19:20:06+0100 insiders sha256:139dirn203s7i8mz3gim3w94ibdnjwm91mjq7h4zibjzh840m2lh
+
+2026-01-13T10:41:15+0100 insiders sha256:1aqxzh3zja35a6sdq1d3iajm0k5n7bkwpbn6hqlnswzfkvxxfcl6
+
+2026-01-07T07:45:50+0100 insiders sha256:0vnrwfz7v9qd3fj2fz8dvjzgzv8zxnm6sppry1rv37l0m7kk3xsw
+
+2025-12-22T06:57:29+0100 insiders sha256:1yhca3x9w338ajhmpwpg7sxw4afbpdvax5fnfw0mr68142nsbdb1
+
+2025-12-16T07:25:15+0100 insiders sha256:1jqmvzqd0x8vvasz6fmn3bjgizgqq4m25df8b10v59m8v5n7c33n
+
+2025-12-13T08:44:25+0100 insiders sha256:0vmajw1i6mjhrvy30pkvwil5paszc4wzbrb90fmxi5zxxarxxc3c
+
+2025-12-08T09:19:55+0100 insiders sha256:0cap01rc3zpl9kkhxa3qflh17jr41vl28k6smm506isyin6m7n0k
+
+2025-12-04T17:41:28+0100 insiders sha256:0l99yb3nr57g0fxzqfm9mzj9z54fz6w5cnf7l4lr1qy7z7a81kx8
+
+2025-11-27T19:14:02+0100 insiders sha256:14dx9wjgv7yfk4gfjsqrzw23d4y8frmng6m81i9247djp84k60ay
+
 2025-11-24T09:01:30+0100 insiders sha256:05vphhhhwyhh00jgwxfwwflpl0bpwzgsfxjyly5kmiliwy5hw2a4
 
 2025-11-21T08:56:48+0100 insiders sha256:1m5z7r4v773ik792w1j8mmvyhf122h3imqayf7wi9d2j0cmjzb19

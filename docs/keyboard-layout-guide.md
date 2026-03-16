@@ -3,6 +3,8 @@
 ## Overview
 This comprehensive guide helps you configure and troubleshoot keyboard layouts on Fedora Linux with GNOME desktop environment. It covers both traditional package management and Nix/Home Manager approaches, with specific focus on Wayland compatibility and common configuration issues.
 
+For this repository's current setup, GNOME provides the normal Swedish layout for the laptop keyboard, while `keyd` provides the Keychron Q11-specific SVDVORAK + real Ctrl + QWERTY-position Ctrl shortcuts behavior.
+
 ## Table of Contents
 1. [Key Concepts](#key-concepts)
 2. [Configuration Methods](#configuration-methods)
@@ -131,6 +133,45 @@ For users managing their system with Nix:
 }
 ```
 
+### Method 3b: Current Repository Setup (`keyd` for Keychron on Wayland)
+
+This repository's current working approach is:
+
+- **Laptop keyboard**: Swedish QWERTY via GNOME input sources
+- **Keychron Q11**: `keyd` handles SVDVORAK plus Ctrl behavior
+- **Why**: the older custom XKB overlay worked historically, but the current Wayland-safe solution in this repo is `keyd`
+
+Key files:
+
+- `~/.nix-config/desktop/keyboard.nix` — GNOME-side keyboard settings and status checks
+- `~/.nix-config/extras/setup-keyd.sh` — writes the working `keyd` config
+- `~/.nix-config/extras/install-keyd.sh` — installs/configures `keyd`
+- `/etc/keyd/default.conf` — the live `keyd` config actually used by the daemon
+
+Working `keyd` design:
+
+- normal typing uses SVDVORAK mappings
+- `leftcontrol` and `rightcontrol` remain **real Ctrl modifiers**
+- the `[control]` layer emits explicit `C-*` shortcuts from **QWERTY positions**
+
+This matters because a layer-only Ctrl setup can make Ctrl shortcuts appear to work while breaking real held-Ctrl behavior such as Ctrl-click multi-select.
+
+Useful commands:
+
+```bash
+# Check that keyd is running
+systemctl status keyd
+
+# Show recent keyd logs
+journalctl -u keyd -n 30 --no-pager
+
+# Reinstall the repo's working keyd config
+~/.nix-config/extras/setup-keyd.sh
+
+# Or use the installer variant
+~/.nix-config/extras/install-keyd.sh
+```
+
 ### Method 4: System-wide Configuration (Traditional)
 
 For system-wide keyboard configuration:
@@ -202,8 +243,6 @@ notify-send "Keyboard Layout" "Custom layout loaded"
 ```
 
 4. **Make it run on startup**: Add to GNOME autostart or your init system
-
-## Troubleshooting Guide
 
 ## Troubleshooting Guide
 
@@ -398,17 +437,26 @@ sudo localectl set-keymap se
 
 #### Problem: Custom SVDVORAK Ctrl Overlay Not Working
 
-**Symptoms**: After running the `setup-custom-keyboard.sh` script, the Ctrl key overlay (holding Ctrl to temporarily access Swedish QWERTY positions while in SVDVORAK mode) is not working.
+This can refer to **two different setups** in this repository:
+
+1. the **legacy custom XKB overlay** (now archived under `archive/keyboard-legacy/xkb-overlay/`)
+2. the **current `keyd`-based Keychron setup** (`setup-keyd.sh` + `/etc/keyd/default.conf`)
+
+Check which one you are actually using before debugging.
+
+### Legacy XKB overlay troubleshooting
+
+**Symptoms**: When using the old archived XKB overlay, the Ctrl key overlay (holding Ctrl to temporarily access Swedish QWERTY positions while in SVDVORAK mode) is not working.
 
 **Root Cause**: Sometimes the XKB state can get corrupted or the custom layout compilation doesn't take effect immediately.
 
 **Solutions**:
 ```bash
-# Method 1: Manually recompile the custom XKB layout
-xkbcomp ~/.nix-config/extras/custom-keyboard-layout.xkb $DISPLAY
+# Method 1: Manually recompile the archived custom XKB layout
+xkbcomp ~/.nix-config/archive/keyboard-legacy/xkb-overlay/custom-keyboard-layout.DEPRECATED.xkb $DISPLAY
 
-# Method 2: Re-run the setup script
-~/.nix-config/extras/setup-custom-keyboard.sh
+# Method 2: Re-run the archived setup script
+~/.nix-config/archive/keyboard-legacy/xkb-overlay/setup-custom-keyboard.DEPRECATED.sh
 
 # Method 3: Test if the overlay is working
 # In SVDVORAK mode, Ctrl+C should be accessible from the Swedish QWERTY 'c' position
@@ -420,6 +468,59 @@ xkbcomp $DISPLAY - | grep -A5 -B5 "key <LCTL>\|key <RCTL>"
 ```
 
 **Verification**: Test that Ctrl+C, Ctrl+V, etc. work from their Swedish QWERTY positions while in SVDVORAK mode.
+
+### Current `keyd` Keychron troubleshooting
+
+**Symptoms**:
+- Ctrl-click multi-select does not work on the Keychron
+- Ctrl shortcuts only work from SVDVORAK letter positions instead of QWERTY positions
+- or the opposite: Ctrl-click works, but QWERTY-position Ctrl shortcuts do not
+
+**Root Cause**:
+- If Ctrl is configured only as a layer switch, it may stop behaving like a real held Ctrl modifier.
+- If Ctrl is real but the control-layer mappings are wrong, pressing Ctrl plus the SVDVORAK key at a QWERTY shortcut position may just type the plain letter.
+
+**Known-good fix in this repository**:
+- Keep both Ctrl keys as real modifiers:
+   - `leftcontrol = control`
+   - `rightcontrol = control`
+- Put explicit shortcut remaps in `[control]`:
+   - for example `c = C-c`, `v = C-v`, `x = C-x`, `z = C-z`
+
+This combination preserves:
+- real held Ctrl for pointer interactions such as Ctrl-click
+- QWERTY-position Ctrl shortcuts while typing in SVDVORAK on the Keychron
+
+**Live recovery steps**:
+
+```bash
+# Install the staged/tested config to the live location
+sudo install -m 0644 ~/.nix-config/archive/keyd-default.conf.staging /etc/keyd/default.conf
+
+# Restart keyd so it reloads the config
+sudo systemctl restart keyd
+
+# Confirm keyd parsed the config
+journalctl -u keyd -n 20 --no-pager
+```
+
+**Repo recovery steps**:
+
+```bash
+# Recreate the working config from the repo helper
+~/.nix-config/extras/setup-keyd.sh
+
+# Or use the install helper
+~/.nix-config/extras/install-keyd.sh
+```
+
+The staging file is mainly useful during live experiments. For normal maintenance, prefer the repo helper scripts because they now generate the known-good configuration directly.
+
+**Verification**:
+- normal typing on the Keychron is still SVDVORAK
+- Ctrl-click multi-select works
+- Ctrl+C / Ctrl+V / Ctrl+X / Ctrl+Z work from **QWERTY positions**
+- Example: in SVDVORAK, the physical key that corresponds to QWERTY `C` is `j`, so **Ctrl+j should copy**
 
 ### Step 3: Complete Reset Procedure
 
@@ -684,7 +785,10 @@ gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'se')]"
 | `~/.xkb/` | User-specific custom XKB layouts | User session | High |
 | `~/.Xmodmap` | Legacy X11 key remapping (discouraged) | User session | Low |
 | `~/.profile` | User environment variables | User session | Medium |
+| `/etc/keyd/default.conf` | Live keyd keyboard remapping config | System-wide | High |
 | `~/.nix-config/desktop/keyboard.nix` | Nix/Home Manager keyboard config | User session | High |
+| `~/.nix-config/extras/setup-keyd.sh` | Repo helper to generate working keyd config | User session | High |
+| `~/.nix-config/extras/install-keyd.sh` | Repo helper to install/configure keyd | User session | High |
 | `/tmp/xkb_*.xkm` | Compiled XKB keymaps | Runtime | Temporary |
 
 ### XKB Component Paths
@@ -711,6 +815,9 @@ gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'se')]"
 | `dconf dump /org/gnome/desktop/input-sources/` | Export GNOME keyboard settings | `dconf dump /org/gnome/desktop/input-sources/` | Read-only |
 | `dconf reset -f /org/gnome/desktop/input-sources/` | Reset GNOME keyboard settings | `dconf reset -f /org/gnome/desktop/input-sources/` | Destructive |
 | `xkbcomp layout.xkb $DISPLAY` | Compile and load custom XKB layout | `xkbcomp -v my-layout.xkb $DISPLAY` | Session only |
+| `systemctl status keyd` | Show whether keyd is running | `systemctl status keyd` | Read-only |
+| `journalctl -u keyd -n 30 --no-pager` | Show recent keyd logs | `journalctl -u keyd -n 30 --no-pager` | Read-only |
+| `sudo systemctl restart keyd` | Reload the live keyd config | `sudo systemctl restart keyd` | Persistent until next change |
 | `gnome-control-center region` | Open GNOME keyboard settings GUI | `gnome-control-center region` | GUI tool |
 
 ### Debugging and Analysis Commands
@@ -847,7 +954,7 @@ ps aux | grep -E "(ibus|fcitx|input|keyboard)" | grep -v grep
 | `~/.config/autostart/` | User autostart applications | Directory | Contains .desktop files for applications that start with session |
 | `~/.xkb/` | User custom XKB directory | Directory | Location for user-specific custom XKB layouts and compilations |
 | `~/.nix-config/desktop/keyboard.nix` | Nix keyboard configuration | File | Home Manager keyboard layout configuration (Nix-specific) |
-| `~/.nix-config/extras/custom-keyboard-layout.xkb` | Custom XKB layout | File | User-defined custom keyboard layout with special behaviors |
+| `~/.nix-config/archive/keyboard-legacy/xkb-overlay/custom-keyboard-layout.DEPRECATED.xkb` | Archived custom XKB layout | File | Legacy XKB overlay kept only for historical reference and recovery |
 | `/tmp/xkb_error.log` | XKB compilation errors | File | Error log from failed XKB layout compilation attempts |
 | `/var/lib/gdm/.config/dconf/user` | GDM user settings | File | GDM's own dconf database for display manager settings |
 

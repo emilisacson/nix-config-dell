@@ -29,12 +29,11 @@ in {
     ./brave.nix
     ./onedrive.nix
     ./discord.nix
-    ./flameshot.nix
+    ./gradia.nix
     ./obs-studio.nix
     ./media-codecs.nix
     ./obsidian.nix
     ./onenote-graph.nix
-    ./windows-vm-pure.nix # Windows VM with pure QEMU approach
     ./podman.nix
   ];
 

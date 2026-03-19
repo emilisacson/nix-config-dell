@@ -1,0 +1,16 @@
+# Repository-wide SOPS configuration
+#
+# Bootstrap flow:
+# 1. Rebuild Home Manager so `age`, `sops`, and `ssh-to-age` are installed.
+# 2. Run `~/.nix-config/extras/setup-sops-age.sh`.
+# 3. Copy the printed public age key into the `age` list below.
+# 4. Create encrypted files in `secrets/` using `sops`.
+#
+# Example encrypted files this repo may use later:
+# - secrets/common.yaml
+# - secrets/tailscale.yaml
+# - secrets/azure.yaml
+
+creation_rules:
+  - path_regex: secrets/.*\.(yaml|json|env|ini)$
+    age: []

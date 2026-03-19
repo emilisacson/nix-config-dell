@@ -13,7 +13,7 @@ A comprehensive Nix Home Manager configuration with **automatic hardware detecti
 2. **Apply configuration:**
    ```bash
    cd ~/.nix-config
-   NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+  NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
    ```
 
 ## ✨ **Features**
@@ -98,6 +98,8 @@ home.file.".local/bin/obs-nixgl" = {
 
 - **[System Detection Guide](docs/system-detection-guide.md)** - Technical details and troubleshooting
 - **[Keyboard Layout Guide](docs/keyboard-layout-guide.md)** - Custom keyboard configuration
+- **[Tailscale Setup Guide](docs/tailscale-setup.md)** - User-side Tailscale tools, daemon setup, and login workflow
+- **[Tailscale & Secrets Spec](docs/tailscale-secrets-spec.md)** - Proposed design for Tailscale integration and reusable secret management
 
 ## 🎯 **Supported Hardware**
 
@@ -186,6 +188,22 @@ flatpak override --user --env=GTK_THEME=Adwaita:dark org.gnome.Evolution
 ## 🔧 Post-Installation Requirements
 
 Some system-level components need to be installed after a fresh OS install or when rebuilding:
+
+### Tailscale
+
+If you want Tailscale on this machine:
+
+```bash
+~/.nix-config/extras/setup-tailscale.sh
+```
+
+This keeps Tailscale aligned with the rest of the repo:
+
+- Home Manager installs helper scripts, secret wiring, and optional systray integration
+- Fedora manages the `tailscale` package and the privileged `tailscaled` daemon
+- You connect with `tailscale-connect` after the daemon is running
+
+See **[Tailscale Setup Guide](docs/tailscale-setup.md)** for the full flow.
 
 ### Keyboard Configuration (keyd for Keychron)
 

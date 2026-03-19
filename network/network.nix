@@ -2,7 +2,7 @@
 
 {
   # Import specific network modules
-  imports = [ ./vpn.nix ];
+  imports = [ ./vpn.nix ./tailscale.nix ];
 
   # Install basic network utilities
   home.packages = with pkgs; [

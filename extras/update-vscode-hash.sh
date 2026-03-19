@@ -287,7 +287,7 @@ if [[ "$REBUILD_AFTER" == "true" ]]; then
   
   echo "[INFO] Configuration verified successfully. Proceeding with full rebuild..."
   
-  if NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage; then
+  if NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"; then
     echo "[SUCCESS] Home Manager rebuild completed successfully"
   else
     echo "[ERROR] Home Manager rebuild failed" >&2

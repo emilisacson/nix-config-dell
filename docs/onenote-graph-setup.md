@@ -17,7 +17,7 @@ This tool synchronizes your OneNote notebooks to local markdown files using the 
 ### 1. Rebuild Your Nix Configuration
 
 ```bash
-cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```
 
 ### 2. Register Azure Application

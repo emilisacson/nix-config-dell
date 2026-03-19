@@ -68,7 +68,7 @@ Displays detection results during Home Manager activation with:
 
 2. **Build configuration** using the detected specifications:
    ```bash
-   NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+  NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
    ```
 
 ### Updating Detection
@@ -77,7 +77,7 @@ Re-run the detection script when your hardware changes:
 ```bash
 cd ~/.nix-config
 ./extras/detect-system-specs.sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```
 
 ## System Specifications Structure
@@ -224,7 +224,7 @@ When running the detection script, you'll see this output:
    • Memory: 62 GB
    • Is Laptop: true
 
-💡 Run 'cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+💡 Run 'cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```
 
 During Home Manager activation, you'll also see a detailed boxed report from the system-info.nix module showing the parsed JSON data with complete hardware specifications and monitor configurations.
@@ -332,7 +332,7 @@ If hardware changes or detection seems incorrect:
 ```bash
 cd ~/.nix-config
 ./extras/detect-system-specs.sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```
 
 ### Manual Inspection
@@ -371,7 +371,7 @@ cd ~/.nix-config
 ```bash
 cd ~/.nix-config
 ./extras/detect-system-specs.sh
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```
 
 **Problem**: GPU detection mismatch

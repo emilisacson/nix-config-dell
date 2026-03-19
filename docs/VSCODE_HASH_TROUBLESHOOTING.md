@@ -85,5 +85,5 @@ If everything breaks:
 cd ~/.nix-config
 # Temporarily disable VS Code in applications/applications.nix
 # Then rebuild
-NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```

@@ -77,7 +77,7 @@ in {
            cd ~/.nix-config && ./extras/detect-system-specs.sh
 
         2. Then rebuild your configuration:
-           cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+           cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 
         The detection script analyzes your hardware and generates the required
         system-specs.json file for hardware-specific configuration.

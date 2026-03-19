@@ -17,9 +17,15 @@ in {
 
   nixpkgs.config.allowUnfreePredicate = _: true;
 
+  repoFeatures.tailscale = {
+    enableSystray =
+      false; # Toggle to true to install and autostart tailscale-systray
+  };
+
   imports = [
     ./lib/system-specs.nix # System specifications from JSON
     ./lib/system-info.nix # System information display
+    ./modules/secrets.nix # Shared secrets manager integration
     ./applications/applications.nix
     ./desktop/keyboard.nix # Import keyboard configuration
     ./desktop/graphics.nix # Import general graphics configuration

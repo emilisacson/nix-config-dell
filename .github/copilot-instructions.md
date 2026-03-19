@@ -17,7 +17,7 @@ This is a **hardware-adaptive** Nix Home Manager configuration with automatic sy
 
 ### Home Manager Rebuild
 ```bash
-cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.$USER.activationPackage
+cd ~/.nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfigurations.$USER.activationPackage"
 ```
 
 ### System Detection (Required Before Build)

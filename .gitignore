@@ -9,3 +9,9 @@
 
 /extras/temp
 /archive/**
+
+# Local secret outputs and env artifacts
+/secrets/*.dec
+/secrets/**/*.dec
+/.env.local
+/.envrc.local

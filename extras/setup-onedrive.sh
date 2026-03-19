@@ -11,7 +11,7 @@ echo ""
 if ! command -v onedrive &> /dev/null; then
     echo "The OneDrive client isn't installed yet."
     echo "Please rebuild your home-manager configuration first:"
-    echo "  cd ~/nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure .#homeConfigurations.\$USER.activationPackage"
+    echo "  cd ~/nix-config && NIXPKGS_ALLOW_UNFREE=1 nix run --impure \"path:$HOME/.nix-config#homeConfigurations.\$USER.activationPackage\""
     echo ""
     exit 1
 fi

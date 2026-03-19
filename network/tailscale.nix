@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   cfg = config.repoFeatures.tailscale;
@@ -8,15 +13,20 @@ let
   tailscaleSecretFile = ../secrets/tailscale.yaml;
   hasTailscaleSecretFile = builtins.pathExists tailscaleSecretFile;
   runtimeConfigPath = "%r/tailscale/config.yaml";
-in {
+in
+{
   options.repoFeatures.tailscale = {
-    enableSystray =
-      lib.mkEnableOption "Tailscale systray package and autostart integration";
+    enableSystray = lib.mkEnableOption "Tailscale systray package and autostart integration";
   };
 
   config = {
-    home.packages = with pkgs;
-      [ yq-go ] ++ lib.optionals cfg.enableSystray [ tailscale-systray ];
+    home.packages =
+      with pkgs;
+      [
+        tailscale
+        yq-go
+      ]
+      ++ lib.optionals cfg.enableSystray [ tailscale-systray ];
 
     sops.secrets = lib.mkIf hasTailscaleSecretFile {
       tailscale-config = {
@@ -27,38 +37,38 @@ in {
       };
     };
 
-    home.activation.checkTailscaleSetup =
-      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        echo "Checking Tailscale setup..."
-        if ! command -v tailscale >/dev/null 2>&1; then
-          echo "⚠️  tailscale CLI is not installed system-wide yet."
-          echo "    Run: ~/.nix-config/extras/setup-tailscale.sh"
-        fi
+    home.activation.checkTailscaleSetup = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      echo "Checking Tailscale setup..."
+      if [ -x "${pkgs.tailscale}/bin/tailscale" ]; then
+        echo "✅ Nix-managed tailscale package is configured"
+      else
+        echo "⚠️  Nix-managed tailscale package could not be found in the store."
+      fi
 
-        if ! ${systemctlBin} cat tailscaled.service >/dev/null 2>&1; then
-          echo "⚠️  tailscaled system service is not installed."
-          echo "    Run: ~/.nix-config/extras/setup-tailscale.sh"
-        elif ! ${systemctlBin} is-active --quiet tailscaled 2>/dev/null; then
-          echo "⚠️  tailscaled is installed but not running."
-          echo "    Run: sudo systemctl enable --now tailscaled"
+      if ! ${systemctlBin} cat tailscaled.service >/dev/null 2>&1; then
+        echo "⚠️  tailscaled system service is not installed."
+        echo "    Run: ~/.nix-config/extras/setup-tailscale.sh"
+      elif ! ${systemctlBin} is-active --quiet tailscaled 2>/dev/null; then
+        echo "⚠️  tailscaled is installed but not running."
+        echo "    Run: sudo systemctl enable --now tailscaled"
+      else
+        echo "✅ tailscaled service is active"
+        if command -v tailscale >/dev/null 2>&1 && (tailscale ip -4 >/dev/null 2>&1 || tailscale status >/dev/null 2>&1); then
+          echo "✅ Tailscale CLI can talk to the daemon"
         else
-          echo "✅ tailscaled service is active"
-          if command -v tailscale >/dev/null 2>&1 && (tailscale ip -4 >/dev/null 2>&1 || tailscale status >/dev/null 2>&1); then
-            echo "✅ Tailscale CLI can talk to the daemon"
-          else
-            echo "⚠️  Tailscale daemon is running, but login status could not be confirmed."
-            echo "    Run: tailscale-connect"
-          fi
+          echo "⚠️  Tailscale daemon is running, but login status could not be confirmed."
+          echo "    Run: tailscale-connect"
         fi
+      fi
 
-        if [ -f "${config.home.homeDirectory}/.config/sops/age/keys.txt" ] && [ ! -f "${config.home.homeDirectory}/.nix-config/secrets/tailscale.yaml" ]; then
-          echo "ℹ️  No encrypted tailscale.yaml found yet. Interactive login remains the default."
-        fi
+      if [ -f "${config.home.homeDirectory}/.config/sops/age/keys.txt" ] && [ ! -f "${config.home.homeDirectory}/.nix-config/secrets/tailscale.yaml" ]; then
+        echo "ℹ️  No encrypted tailscale.yaml found yet. Interactive login remains the default."
+      fi
 
-        if ${lib.boolToString cfg.enableSystray}; then
-          echo "ℹ️  Tailscale systray integration is enabled."
-        fi
-      '';
+      if ${lib.boolToString cfg.enableSystray}; then
+        echo "ℹ️  Tailscale systray integration is enabled."
+      fi
+    '';
 
     home.file.".local/bin/tailscale-status" = {
       executable = true;
@@ -69,8 +79,8 @@ in {
         TAILSCALE_BIN="$(command -v tailscale || true)"
 
         if [[ -z "$TAILSCALE_BIN" ]]; then
-          echo "tailscale CLI is not installed system-wide."
-          echo "Run: ~/.nix-config/extras/setup-tailscale.sh"
+          echo "tailscale is not installed in your Home Manager profile."
+          echo "Rebuild Home Manager first."
           exit 1
         fi
 
@@ -105,8 +115,8 @@ in {
         declare -a args
 
         if [[ -z "$TAILSCALE_BIN" ]]; then
-          echo "tailscale CLI is not installed system-wide."
-          echo "Run: ~/.nix-config/extras/setup-tailscale.sh"
+          echo "tailscale is not installed in your Home Manager profile."
+          echo "Rebuild Home Manager first."
           exit 1
         fi
 
@@ -179,8 +189,8 @@ in {
         TAILSCALE_BIN="$(command -v tailscale || true)"
 
         if [[ -z "$TAILSCALE_BIN" ]]; then
-          echo "tailscale CLI is not installed system-wide."
-          echo "Run: ~/.nix-config/extras/setup-tailscale.sh"
+          echo "tailscale is not installed in your Home Manager profile."
+          echo "Rebuild Home Manager first."
           exit 1
         fi
 
@@ -197,8 +207,8 @@ in {
         TAILSCALE_BIN="$(command -v tailscale || true)"
 
         if [[ -z "$TAILSCALE_BIN" ]]; then
-          echo "tailscale CLI is not installed system-wide."
-          echo "Run: ~/.nix-config/extras/setup-tailscale.sh"
+          echo "tailscale is not installed in your Home Manager profile."
+          echo "Rebuild Home Manager first."
           exit 1
         fi
 
@@ -220,25 +230,27 @@ in {
       exec = "tailscale-ui";
       icon = "tailscale";
       comment = "Start the Tailscale systray client";
-      categories = [ "Network" "Utility" ];
+      categories = [
+        "Network"
+        "Utility"
+      ];
       terminal = false;
       startupNotify = false;
     };
 
-    xdg.configFile."autostart/tailscale-systray.desktop" =
-      lib.mkIf cfg.enableSystray {
-        text = ''
-          [Desktop Entry]
-          Name=Tailscale Systray
-          Exec=tailscale-ui
-          Icon=tailscale
-          Comment=Start the Tailscale systray client
-          Categories=Network;Utility;
-          Terminal=false
-          StartupNotify=false
-          Type=Application
-        '';
-      };
+    xdg.configFile."autostart/tailscale-systray.desktop" = lib.mkIf cfg.enableSystray {
+      text = ''
+        [Desktop Entry]
+        Name=Tailscale Systray
+        Exec=tailscale-ui
+        Icon=tailscale
+        Comment=Start the Tailscale systray client
+        Categories=Network;Utility;
+        Terminal=false
+        StartupNotify=false
+        Type=Application
+      '';
+    };
 
     home.file.".local/bin/setup-tailscale" = {
       executable = true;

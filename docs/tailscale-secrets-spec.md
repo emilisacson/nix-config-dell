@@ -7,8 +7,8 @@ This document specifies how Tailscale and a reusable secrets-management layer sh
 The recommended design is:
 
 - **Tailscale** integrated as a hybrid solution:
-  - declarative **helper/UX integration** in Home Manager
-  - privileged **package + daemon setup** handled by Fedora and a helper script
+  - declarative **package + helper/UX integration** in Home Manager
+  - privileged **daemon setup** handled by Fedora systemd and a helper script
 - **Secrets management** built on **`sops-nix` with `age` keys**
   - reusable across many modules in the repo
   - suitable for Home Manager on non-NixOS Linux
@@ -339,6 +339,7 @@ Tailscale should be split into two responsibilities.
 
 The Tailscale Home Manager module should manage:
 
+- `pkgs.tailscale`
 - optional `pkgs.tailscale-systray`
 - helper scripts like:
   - `tailscale-status`
@@ -355,8 +356,8 @@ The Tailscale Home Manager module should manage:
 
 Fedora-level setup should manage:
 
-- installation of the system package and CLI
 - enabling and starting the `tailscaled` daemon
+- installing or refreshing a systemd unit that points at Nix-managed Tailscale binaries
 - any root-level daemon configuration
 - any systray startup integration that requires system support
 

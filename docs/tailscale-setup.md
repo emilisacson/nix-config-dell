@@ -7,15 +7,14 @@ This guide explains how Tailscale is integrated into this Fedora + Home Manager 
 Tailscale is intentionally split across two layers:
 
 - **Home Manager** provides:
+  - the `tailscale` and `tailscaled` binaries from Nix
   - helper commands such as `tailscale-connect` and `tailscale-status`
   - optional secret-backed defaults
   - optional `tailscale-systray`
   - activation-time checks and reminders
 - **Fedora / systemd** provides:
-  - the `tailscale` CLI package
   - the privileged `tailscaled` daemon
-  - package installation and updates
-  - system service enable/start lifecycle
+  - system service enable/start lifecycle that points to the Nix-managed binaries
 
 This repository is not NixOS, so the system daemon is handled with a helper script instead of pretending Home Manager owns the whole host.
 
@@ -23,6 +22,7 @@ This repository is not NixOS, so the system daemon is handled with a helper scri
 
 After rebuilding Home Manager, you get:
 
+- `tailscale`
 - `tailscale-connect`
 - `tailscale-disconnect`
 - `tailscale-reauth`
@@ -34,7 +34,7 @@ If `repoFeatures.tailscale.enableSystray = true;`, you also get:
 - `tailscale-systray`
 - `tailscale-ui`
 
-The actual `tailscale` CLI and `tailscaled` daemon come from Fedora, which keeps upgrades and service ownership in one place.
+The actual Tailscale binaries come from Nix. The helper script writes a root systemd unit that points at your current Nix profile, so Tailscale stays Nix-managed while Fedora still runs the privileged daemon.
 
 ## Systray toggle
 
@@ -72,8 +72,10 @@ NIXPKGS_ALLOW_UNFREE=1 nix run --impure "path:$HOME/.nix-config#homeConfiguratio
 
 This helper script will:
 
-- try to install `tailscale` system-wide with `dnf` if needed
-- add the official Tailscale Fedora repository automatically if the first install attempt fails
+- verify that `tailscale` and `tailscaled` are available from your Home Manager profile
+- write `/etc/systemd/system/tailscaled.service` to use the Nix-managed binaries
+- create an optional `/etc/default/tailscaled` env file for future overrides
+- reload systemd
 - enable and start `tailscaled`
 - verify the service is active
 - print the next commands to run
@@ -274,8 +276,8 @@ For your setup, I recommend this progression:
 
 For this repo, the low-maintenance split is:
 
-- Fedora owns the real Tailscale installation and daemon
-- Home Manager owns convenience, defaults, and optional UX extras
+- Home Manager owns the Tailscale package, convenience commands, defaults, and optional UX extras
+- Fedora systemd owns running the privileged daemon using the Nix-managed binaries
 
 That means on another Fedora machine the flow stays simple:
 

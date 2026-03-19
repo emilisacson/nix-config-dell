@@ -18,6 +18,10 @@
       };
     };
     nix-flatpak = { url = "github:gmodena/nix-flatpak/?ref=latest"; };
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # Add nixGL for OpenGL support in non-NixOS systems
     nixgl = {
       url = "github:nix-community/nixGL";
@@ -26,7 +30,7 @@
   };
 
   outputs = inputs@{ nixpkgs, nixpkgs-unstable, home-manager, cosmic-manager
-    , nix-flatpak, nixgl, ... }:
+    , nix-flatpak, sops-nix, nixgl, ... }:
     let
       system = "x86_64-linux";
       username = "emil";
@@ -45,6 +49,7 @@
           inherit pkgs;
           extraSpecialArgs = { inherit inputs unstable nixgl; };
           modules = [
+            sops-nix.homeManagerModules.sops
             ./home.nix
             cosmic-manager.homeManagerModules.cosmic-manager
             nix-flatpak.homeManagerModules.nix-flatpak

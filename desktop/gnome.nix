@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # Import extensions configuration
@@ -9,7 +14,6 @@
     gnome-tweaks
     gnome-extension-manager
     gnome-browser-connector # Allows browser integration for extensions.gnome.org
-    chrome-gnome-shell # Browser connector for Chrome/Firefox
     gnome-shell-extensions
   ];
 
@@ -28,11 +32,17 @@
     };
 
     # Language and locale settings
-    "org/gnome/system/locale" = { region = "sv_SE.UTF-8"; };
-    "system/locale" = { region = "sv_SE.UTF-8"; };
+    "org/gnome/system/locale" = {
+      region = "sv_SE.UTF-8";
+    };
+    "system/locale" = {
+      region = "sv_SE.UTF-8";
+    };
 
     # Date and time format for Swedish locale
-    "org/gnome/desktop/calendar" = { show-weekdate = true; };
+    "org/gnome/desktop/calendar" = {
+      show-weekdate = true;
+    };
 
     # Window manager preferences
     "org/gnome/desktop/wm/preferences" = {
@@ -42,11 +52,9 @@
 
     # Power settings - enhanced for hibernation support
     "org/gnome/settings-daemon/plugins/power" = {
-      sleep-inactive-ac-type =
-        "nothing"; # Don't auto-sleep on AC (handled by hibernation module)
+      sleep-inactive-ac-type = "nothing"; # Don't auto-sleep on AC (handled by hibernation module)
       sleep-inactive-battery-timeout = 1800; # 30 minutes on battery
-      sleep-inactive-battery-type =
-        "suspend"; # Default to suspend on battery (hibernation module will override if enabled)
+      sleep-inactive-battery-type = "suspend"; # Default to suspend on battery (hibernation module will override if enabled)
 
       # Power button and lid behavior (will be overridden by hibernation module if enabled)
       power-button-action = "interactive";
@@ -73,13 +81,14 @@
     };
 
     # Icon view settings (for consistency)
-    "org/gnome/nautilus/icon-view" = { default-zoom-level = "standard"; };
+    "org/gnome/nautilus/icon-view" = {
+      default-zoom-level = "standard";
+    };
 
     "org/gnome/shell" = {
       disable-user-extensions = false;
       development-tools = true; # Enable development tools for extensions
-      disable-extension-version-validation =
-        true; # Allow installing extensions for different GNOME versions
+      disable-extension-version-validation = true; # Allow installing extensions for different GNOME versions
     };
 
     # Default applications

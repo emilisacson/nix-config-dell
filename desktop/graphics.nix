@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # General graphics and GPU utilities for all systems
@@ -12,9 +17,9 @@
     wayland-utils # Wayland utilities including wayland-info
 
     # X11 and graphics tools
-    xorg.xhost # For managing access to the X server
-    xorg.xrandr # Display configuration utility for monitor detection
-    glxinfo # OpenGL information tool
+    xhost # For managing access to the X server
+    xrandr # Display configuration utility for monitor detection
+    mesa-demos # Provides glxinfo and related OpenGL diagnostic tools
 
     # GNOME configuration tools
     dconf # GNOME configuration database tool

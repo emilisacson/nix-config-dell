@@ -50,14 +50,16 @@
       focus-mode = "click";
     };
 
-    # Power settings - enhanced for hibernation support
+    # Power settings
     "org/gnome/settings-daemon/plugins/power" = {
-      sleep-inactive-ac-type = "nothing"; # Don't auto-sleep on AC (handled by hibernation module)
+      sleep-inactive-ac-type = "nothing"; # Don't auto-sleep on AC
       sleep-inactive-battery-timeout = 1800; # 30 minutes on battery
-      sleep-inactive-battery-type = "suspend"; # Default to suspend on battery (hibernation module will override if enabled)
+      sleep-inactive-battery-type = "suspend";
 
-      # Power button and lid behavior (will be overridden by hibernation module if enabled)
+      # Power button and lid behavior
       power-button-action = "interactive";
+      lid-close-ac-action = "suspend";
+      lid-close-battery-action = "suspend";
       idle-dim = true;
 
       # Show battery percentage

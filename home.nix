@@ -54,7 +54,6 @@ in
     ./desktop/graphics.nix # Import general graphics configuration
     ./desktop/nvidia.nix # Import NVIDIA-specific configuration
     ./desktop/performance.nix # Import system-specific performance configuration
-    ./desktop/hibernation.nix # Import hibernation configuration
     ./network/network.nix # Import network configuration
   ]
   ++ (

@@ -341,11 +341,13 @@ The Tailscale Home Manager module should manage:
 
 - `pkgs.tailscale`
 - optional `pkgs.tailscale-systray`
+- optional automatic home-network switching policy
 - helper scripts like:
   - `tailscale-status`
   - `tailscale-connect`
   - `tailscale-disconnect`
   - `tailscale-reauth`
+  - `tailscale-auto-toggle`
 - activation checks for:
   - whether `tailscaled` is installed
   - whether `tailscaled` is active
@@ -358,6 +360,7 @@ Fedora-level setup should manage:
 
 - enabling and starting the `tailscaled` daemon
 - installing or refreshing a systemd unit that points at Nix-managed Tailscale binaries
+- installing or refreshing a NetworkManager dispatcher hook for background home/away switching
 - any root-level daemon configuration
 - any systray startup integration that requires system support
 
@@ -421,11 +424,18 @@ Suggested helper script responsibilities:
 ### `extras/setup-tailscale.sh`
 
 - check whether Tailscale is available on the system
-- install or guide installation
 - enable `tailscaled`
 - start `tailscaled`
+- install/remove the NetworkManager dispatcher hook for automatic home-network switching
 - optionally enable systray support
 - print next-step instructions
+
+### `tailscale-auto-toggle`
+
+- run as a background NetworkManager dispatcher target
+- match trusted/home networks by configured SSID, connection name, or gateway
+- automatically run `tailscale down` on home/trusted networks
+- automatically run `tailscale up` when leaving home, but skip auto-connect if Tailscale still needs interactive login
 
 ### `tailscale-connect`
 

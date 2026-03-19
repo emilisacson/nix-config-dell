@@ -34,6 +34,11 @@ If `repoFeatures.tailscale.enableSystray = true;`, you also get:
 - `tailscale-systray`
 - `tailscale-ui`
 
+If `repoFeatures.tailscale.autoToggle.enable = true;`, you also get:
+
+- `tailscale-auto-toggle`
+- automatic background switching via a NetworkManager dispatcher hook installed by `setup-tailscale`
+
 The actual Tailscale binaries come from Nix. The helper script writes a root systemd unit that points at your current Nix profile, so Tailscale stays Nix-managed while Fedora still runs the privileged daemon.
 
 ## Systray toggle
@@ -54,6 +59,35 @@ Notes:
 
 - The toggle is off by default.
 - On GNOME, visibility of status icons can still depend on your shell/extensions setup.
+- After enabling it for the first time, log out and back in once so GNOME picks up the AppIndicator extension and autostart entry.
+- You can also launch it manually in the current session with `tailscale-ui`.
+
+## Automatic home-network switching
+
+The repo can automatically keep Tailscale down on trusted home networks and bring it back up elsewhere whenever NetworkManager reports a network change.
+
+The current config in `home.nix` is:
+
+```nix
+repoFeatures.tailscale.autoToggle = {
+  enable = true;
+  homeConnectionNames = [ "Crynet_5G" ];
+  homeSsids = [ "Crynet_5G" ];
+  homeGateways = [ "192.168.2.1" ];
+};
+```
+
+How it works:
+
+- on your home Wi-Fi / gateway, the background hook runs `tailscale down`
+- when you move to another network, it runs `tailscale up`
+- if the machine is not logged in to Tailscale yet, it skips automatic reconnect and leaves you a clean manual `tailscale-connect` path instead of spamming browser auth flows in the background
+
+You can tune any of these match lists later:
+
+- `homeConnectionNames` for NetworkManager connection names
+- `homeSsids` for Wi-Fi SSIDs
+- `homeGateways` for default gateway IPs
 
 ## First-time setup
 
@@ -74,9 +108,11 @@ This helper script will:
 
 - verify that `tailscale` and `tailscaled` are available from your Home Manager profile
 - write `/etc/systemd/system/tailscaled.service` to use the Nix-managed binaries
+- write `/etc/NetworkManager/dispatcher.d/90-tailscale-auto-toggle` when automatic switching is enabled
 - create an optional `/etc/default/tailscaled` env file for future overrides
 - reload systemd
-- enable and start `tailscaled`
+- enable and restart `tailscaled`
+- immediately sync the current home/away network state
 - verify the service is active
 - print the next commands to run
 
@@ -272,6 +308,11 @@ For your setup, I recommend this progression:
 4. Confirm everything works
 5. Only then add an encrypted `tailscale.yaml` if you want automation or stable defaults
 
+If you use the automatic home-network switching, step 4 should include a quick real-world check:
+
+- on your home network, `tailscale-status` should show Tailscale down
+- on another network, it should come back automatically within a few seconds of NetworkManager reconnecting
+
 ## Why this is the cleanest model here
 
 For this repo, the low-maintenance split is:
@@ -295,6 +336,7 @@ During Home Manager activation, the config will warn if:
 - `tailscaled` is not installed
 - `tailscaled` is not running
 - daemon connectivity cannot be confirmed
+- automatic home-network switching is configured but the NetworkManager hook is not installed
 
 That gives a friendly reminder without forcing root actions during the rebuild.
 
@@ -306,6 +348,26 @@ Run:
 
 ```bash
 ~/.nix-config/extras/setup-tailscale.sh
+```
+
+### Automatic home-network switching does not react after a Wi-Fi change
+
+Check that the dispatcher hook exists:
+
+```bash
+ls -l /etc/NetworkManager/dispatcher.d/90-tailscale-auto-toggle
+```
+
+Then reinstall it:
+
+```bash
+~/.nix-config/extras/setup-tailscale.sh
+```
+
+And review recent logs:
+
+```bash
+journalctl -t tailscale-auto-toggle -n 50 --no-pager
 ```
 
 ### `tailscaled` is installed but not running

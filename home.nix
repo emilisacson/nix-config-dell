@@ -1,11 +1,18 @@
-{ config, pkgs, inputs, lib, ... }:
+{
+  config,
+  pkgs,
+  inputs,
+  lib,
+  ...
+}:
 
 let
   # Create a parameter to switch between desktop environments
   # Valid options: "cosmic" or "gnome"
   desktopEnvironment = "gnome";
   # desktopEnvironment = "cosmic";
-in {
+in
+{
   home.username = "emil";
   home.homeDirectory = "/home/emil";
 
@@ -18,8 +25,24 @@ in {
   nixpkgs.config.allowUnfreePredicate = _: true;
 
   repoFeatures.tailscale = {
-    enableSystray =
-      false; # Toggle to true to install and autostart tailscale-systray
+    enableSystray = true; # Toggle to true to install and autostart tailscale-systray
+    autoToggle = {
+      enable = true;
+      homeConnectionNames = [
+        "Crynet_5G"
+        "Crynet"
+        "Crynet_IoT"
+      ];
+      homeSsids = [
+        "Crynet_5G"
+        "Crynet"
+        "Crynet_IoT"
+      ];
+      homeGateways = [
+        "192.168.2.1"
+        "192.168.3.1"
+      ];
+    };
   };
 
   imports = [
@@ -33,10 +56,15 @@ in {
     ./desktop/performance.nix # Import system-specific performance configuration
     ./desktop/hibernation.nix # Import hibernation configuration
     ./network/network.nix # Import network configuration
-  ] ++ (if desktopEnvironment == "cosmic" then [
-    inputs.cosmic-manager.homeManagerModules.default
-    ./desktop/cosmic.nix
-  ] else
-    [ ./desktop/gnome.nix ]);
+  ]
+  ++ (
+    if desktopEnvironment == "cosmic" then
+      [
+        inputs.cosmic-manager.homeManagerModules.default
+        ./desktop/cosmic.nix
+      ]
+    else
+      [ ./desktop/gnome.nix ]
+  );
 
 }

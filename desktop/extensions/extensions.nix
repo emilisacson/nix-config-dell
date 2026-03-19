@@ -1,15 +1,22 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   # Import extension configurations as attribute sets (not as modules)
   commonExtensionsConfig = import ./common.nix { inherit config lib; };
 
-in {
+in
+{
   # Import the dash-to-panel module directly
   imports = [ ./dash-to-panel.nix ];
 
   # GNOME Extensions packages
   home.packages = with pkgs; [
+    gnomeExtensions.appindicator
     gnomeExtensions.dash-to-panel # For all monitors with configurable positions
     gnomeExtensions.gsconnect # Add GSConnect extension
     gnomeExtensions.tiling-assistant # Advanced window tiling with multi-monitor support
@@ -27,7 +34,10 @@ in {
     # GNOME Shell Extensions settings - Allow network access and enable extensions
     {
       "org/gnome/shell/extensions" = {
-        allowed-extensions = [ "extensions.gnome.org" "localhost" ];
+        allowed-extensions = [
+          "extensions.gnome.org"
+          "localhost"
+        ];
         user-extensions-enabled = true;
       };
 
@@ -47,4 +57,9 @@ in {
       };
     }
   ];
+
+  xdg.dataFile."gnome-shell/extensions/appindicatorsupport@rgcjonas.gmail.com" = {
+    source = "${pkgs.gnomeExtensions.appindicator}/share/gnome-shell/extensions/appindicatorsupport@rgcjonas.gmail.com";
+    recursive = true;
+  };
 }

@@ -201,6 +201,7 @@ This keeps Tailscale aligned with the rest of the repo:
 
 - Home Manager installs the `tailscale` package, helper scripts, secret wiring, and optional systray integration
 - Fedora systemd runs the privileged `tailscaled` daemon using the Nix-managed binaries
+- NetworkManager can automatically switch Tailscale down at home and back up elsewhere in the background
 - You connect with `tailscale-connect` after the daemon is running
 
 See **[Tailscale Setup Guide](docs/tailscale-setup.md)** for the full flow.

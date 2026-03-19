@@ -6,6 +6,9 @@ TAILSCALED_BIN="$(command -v tailscaled || true)"
 SYSTEMCTL_BIN="/usr/bin/systemctl"
 SYSTEMD_UNIT_PATH="/etc/systemd/system/tailscaled.service"
 SYSTEMD_ENV_PATH="/etc/default/tailscaled"
+NM_DISPATCHER_DIR="/etc/NetworkManager/dispatcher.d"
+NM_DISPATCHER_PATH="$NM_DISPATCHER_DIR/90-tailscale-auto-toggle"
+AUTO_TOGGLE_BIN="$HOME/.local/bin/tailscale-auto-toggle"
 
 print_next_steps() {
   echo
@@ -67,6 +70,21 @@ EOF
   echo "  tailscaled: $tailscaled_path"
 }
 
+write_networkmanager_dispatcher() {
+  if [[ -x "$AUTO_TOGGLE_BIN" ]]; then
+    echo "Writing $NM_DISPATCHER_PATH for automatic home-network switching..."
+    sudo install -d -m 0755 "$NM_DISPATCHER_DIR"
+    sudo tee "$NM_DISPATCHER_PATH" >/dev/null <<EOF
+#!/usr/bin/env bash
+exec "$AUTO_TOGGLE_BIN" "\$@"
+EOF
+    sudo chmod 0755 "$NM_DISPATCHER_PATH"
+  elif [[ -f "$NM_DISPATCHER_PATH" ]]; then
+    echo "Removing stale $NM_DISPATCHER_PATH because $AUTO_TOGGLE_BIN is not enabled in Home Manager..."
+    sudo rm -f "$NM_DISPATCHER_PATH"
+  fi
+}
+
 if [[ ! -x "$SYSTEMCTL_BIN" ]]; then
   echo "systemctl was not found at $SYSTEMCTL_BIN"
   exit 1
@@ -81,6 +99,7 @@ fi
 
 write_systemd_env_file
 write_systemd_unit "$TAILSCALE_BIN" "$TAILSCALED_BIN"
+write_networkmanager_dispatcher
 
 echo "Enabling and restarting tailscaled..."
 sudo "$SYSTEMCTL_BIN" daemon-reload
@@ -104,6 +123,11 @@ if command -v tailscale >/dev/null 2>&1; then
   echo "✅ tailscale CLI is available"
 else
   echo "⚠️  tailscale CLI is still not on PATH. Open a new shell or confirm your Home Manager profile is active."
+fi
+
+if [[ -x "$AUTO_TOGGLE_BIN" ]]; then
+  echo "Syncing automatic home-network switching state..."
+  sudo "$AUTO_TOGGLE_BIN" setup connectivity-change || true
 fi
 
 print_next_steps

@@ -17,7 +17,9 @@
         home-manager.follows = "home-manager";
       };
     };
-    nix-flatpak = { url = "github:gmodena/nix-flatpak/?ref=latest"; };
+    nix-flatpak = {
+      url = "github:gmodena/nix-flatpak/?ref=latest";
+    };
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -29,31 +31,52 @@
     };
   };
 
-  outputs = inputs@{ nixpkgs, nixpkgs-unstable, home-manager, cosmic-manager
-    , nix-flatpak, sops-nix, nixgl, ... }:
+  outputs =
+    inputs@{
+      nixpkgs,
+      nixpkgs-unstable,
+      home-manager,
+      cosmic-manager,
+      nix-flatpak,
+      sops-nix,
+      nixgl,
+      ...
+    }:
     let
       system = "x86_64-linux";
       username = "emil";
+      nixglOverlay =
+        final: _prev:
+        let
+          isIntelX86Platform = final.stdenv.hostPlatform.system == "x86_64-linux";
+        in
+        {
+          nixgl = import "${nixgl.outPath}/default.nix" {
+            pkgs = final;
+            enable32bits = isIntelX86Platform;
+            enableIntelX86Extensions = isIntelX86Platform;
+          };
+        };
 
       # Configure pkgs with overlays
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
-        overlays = [ nixgl.overlay ];
+        overlays = [ nixglOverlay ];
       };
 
       unstable = nixpkgs-unstable.legacyPackages.${system};
-    in {
-      homeConfigurations.${username} =
-        home-manager.lib.homeManagerConfiguration {
-          inherit pkgs;
-          extraSpecialArgs = { inherit inputs unstable nixgl; };
-          modules = [
-            sops-nix.homeManagerModules.sops
-            ./home.nix
-            cosmic-manager.homeManagerModules.cosmic-manager
-            nix-flatpak.homeManagerModules.nix-flatpak
-          ];
-        };
+    in
+    {
+      homeConfigurations.${username} = home-manager.lib.homeManagerConfiguration {
+        inherit pkgs;
+        extraSpecialArgs = { inherit inputs unstable nixgl; };
+        modules = [
+          sops-nix.homeManagerModules.sops
+          ./home.nix
+          cosmic-manager.homeManagerModules.cosmic-manager
+          nix-flatpak.homeManagerModules.nix-flatpak
+        ];
+      };
     };
 }
